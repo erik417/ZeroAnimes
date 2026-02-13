@@ -1,0 +1,61 @@
+<%- include('partials/header', { q }) %>
+<section class="hero">
+  <div class="slider" id="bannerSlider">
+    <% (popular || []).slice(0,5).forEach(p => { %>
+      <a class="slide" href="/anime/<%= p.slug %>" style="background-image:url('<%= p.cover_path || '/public/img/placeholder.svg' %>')">
+        <div class="slide-caption">
+          <h2><%= p.title %></h2>
+          <p>Trending this week</p>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Top 10 Weekly</h3>
+  <div class="card-grid">
+    <% popular.forEach(a => { %>
+      <a class="card" href="/anime/<%= a.slug %>">
+        <img src="<%= a.cover_path || '/public/img/placeholder.svg' %>" alt="<%= a.title %>"/>
+        <div class="card-body">
+          <h4><%= a.title %></h4>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+</section>
+
+<section class="section">
+  <h3>New Episodes</h3>
+  <div class="episode-row">
+    <% latestEpisodes.forEach(e => { %>
+      <a class="episode-pill" href="/watch/<%= e.id %>">
+        <img src="<%= e.cover_path || '/public/img/placeholder.svg' %>" />
+        <div>
+          <strong><%= e.anime_title %></strong>
+          <span>Ep <%= e.number %></span>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Popular Now</h3>
+  <div class="card-grid">
+    <% anime.forEach(a => { %>
+      <a class="card" href="/anime/<%= a.slug %>">
+        <img src="<%= a.cover_path || '/public/img/placeholder.svg' %>" alt="<%= a.title %>"/>
+        <div class="card-body">
+          <h4><%= a.title %></h4>
+          <div class="tags">
+            <% (a.genres || '').split(',').slice(0,3).forEach(g => { %><span class="tag"><%= g %></span><% }) %>
+          </div>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+</section>
+<%- include('partials/footer') %>
+

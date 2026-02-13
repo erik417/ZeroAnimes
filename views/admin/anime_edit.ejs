@@ -1,0 +1,81 @@
+<%- include('../partials/header', { q: '' }) %>
+<section class="section">
+  <h3>Edit Anime</h3>
+  <form class="form" action="/admin/anime/<%= anime.id %>" method="post" enctype="multipart/form-data">
+    <label>Title</label>
+    <input name="title" required value="<%= anime.title %>"/>
+    <label>Description</label>
+    <textarea name="description" rows="4"><%= anime.description %></textarea>
+    <label>Genres (comma separated)</label>
+    <input name="genres" value="<%= anime.genres %>"/>
+    <label>Cover Image</label>
+    <input type="file" name="cover" accept="image/*"/>
+    <button class="btn primary">Save</button>
+  </form>
+  <form action="/admin/anime/<%= anime.id %>/delete" method="post">
+    <button class="btn danger">Delete Anime</button>
+  </form>
+</section>
+
+<section class="section">
+  <h3>Add Episode</h3>
+  <form class="form" action="/admin/anime/<%= anime.id %>/episodes" method="post" enctype="multipart/form-data">
+    <label>Episode Number</label>
+    <input type="number" name="number" required />
+    <label>Title</label>
+    <input name="title" />
+    <label>Video 360p</label>
+    <input type="file" name="video_360" accept="video/*" />
+    <label>Video 360p URL</label>
+    <input name="video_360_url" placeholder="https://..." />
+    <label>Video 720p</label>
+    <input type="file" name="video_720" accept="video/*" />
+    <label>Video 720p URL</label>
+    <input name="video_720_url" placeholder="https://..." />
+    <label>Video 1080p</label>
+    <input type="file" name="video_1080" accept="video/*" />
+    <label>Video 1080p URL</label>
+    <input name="video_1080_url" placeholder="https://..." />
+    <button class="btn primary">Add Episode</button>
+  </form>
+</section>
+
+<section class="section">
+  <h3>Episodes</h3>
+  <div class="episodes-list">
+    <% episodes.forEach(e => { %>
+      <div class="episode-item admin-episode">
+        <span>Episode <%= e.number %> — <%= e.title %></span>
+        <form action="/admin/episodes/<%= e.id %>/delete" method="post">
+          <button class="btn danger">Delete</button>
+        </form>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Comments</h3>
+  <div class="comments">
+    <% comments.forEach(c => { %>
+      <div class="comment admin-comment" data-id="<%= c.id %>">
+        <strong><%= c.username %></strong>
+        <span><%= c.content %></span>
+        <button class="btn danger delete-comment" data-id="<%= c.id %>">Delete</button>
+      </div>
+    <% }) %>
+    <% if (comments.length === 0) { %><p>No comments.</p><% } %>
+  </div>
+</section>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.delete-comment').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const r = await fetch(`/admin/comments/${id}/delete`, { method: 'POST' });
+      if (r.ok) btn.closest('.comment').remove();
+    });
+  });
+});
+</script>
+<%- include('../partials/footer') %>

@@ -1,0 +1,23 @@
+<%- include('partials/header', { q: '' }) %>
+<section class="watch">
+  <h1><a href="/anime/<%= anime.slug %>"><%= anime.title %></a> — Episode <%= episode.number %></h1>
+  <div class="player-container">
+    <video id="player" controls playsinline>
+      <% if (episode.video_360) { %><source src="<%= episode.video_360 %>" data-quality="360p" /><% } %>
+      <% if (episode.video_720) { %><source src="<%= episode.video_720 %>" data-quality="720p" /><% } %>
+      <% if (episode.video_1080) { %><source src="<%= episode.video_1080 %>" data-quality="1080p" /><% } %>
+    </video>
+    <div class="controls">
+      <label for="quality">Quality:</label>
+      <select id="quality"></select>
+      <% if (nextEpisode) { %><a id="nextEp" class="btn primary" href="/watch/<%= nextEpisode.id %>">Next Episode »</a><% } %>
+    </div>
+  </div>
+</section>
+<script src="/public/js/player.js"></script>
+<script>
+  window.__EPISODE_ID__ = <%= episode.id %>;
+  window.__NEXT_URL__ = <%= nextEpisode ? JSON.stringify('/watch/'+nextEpisode.id) : 'null' %>;
+  window.__IS_AUTH__ = <%= user ? 'true' : 'false' %>;
+</script>
+<%- include('partials/footer') %>

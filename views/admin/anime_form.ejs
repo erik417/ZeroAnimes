@@ -1,0 +1,22 @@
+<%- include('../partials/header', { q: '' }) %>
+<section class="section">
+  <h3>Create Anime</h3>
+  <% if (errors && errors.length) { %>
+    <div class="error-list">
+      <% errors.forEach(e => { %><p class="error"><%= e.msg %></p><% }) %>
+    </div>
+  <% } %>
+  <form class="form" action="/admin/anime" method="post" enctype="multipart/form-data">
+    <label>Title</label>
+    <input name="title" required value="<%= values.title || '' %>"/>
+    <label>Description</label>
+    <textarea name="description" rows="4"><%= values.description || '' %></textarea>
+    <label>Genres (comma separated)</label>
+    <input name="genres" value="<%= values.genres || '' %>"/>
+    <label>Cover Image</label>
+    <input type="file" name="cover" accept="image/*"/>
+    <button class="btn primary">Create</button>
+  </form>
+</section>
+<%- include('../partials/footer') %>
+

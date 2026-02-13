@@ -1,0 +1,60 @@
+<%- include('../partials/header', { q: '' }) %>
+<section class="section">
+  <h3>Admin Dashboard</h3>
+  <div class="stats-grid">
+    <div class="stat-card"><strong>Total Users</strong><span><%= usersCount %></span></div>
+    <div class="stat-card"><strong>Total Views</strong><span><%= viewsCount %></span></div>
+    <div class="stat-card"><strong>Total Anime</strong><span><%= animeCount %></span></div>
+    <div class="stat-card"><strong>Visible Comments</strong><span><%= commentsCount %></span></div>
+  </div>
+  <div class="admin-actions">
+    <a class="btn primary" href="/admin/anime/new">Add New Anime</a>
+    <a class="btn" href="/admin/videos">Upload Videos</a>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Anime List</h3>
+  <div class="table">
+    <div class="row head">
+      <span>Title</span>
+      <span>Genres</span>
+      <span>Episodes</span>
+      <span>Actions</span>
+    </div>
+    <% animeList.forEach(a => { %>
+      <div class="row">
+        <span><%= a.title %></span>
+        <span><%= a.genres %></span>
+        <span><%= a.episode_count %></span>
+        <span><a class="btn" href="/admin/anime/<%= a.id %>">Edit</a></span>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Recent Comments</h3>
+  <div class="comments">
+    <% recentComments.forEach(c => { %>
+      <div class="comment admin-comment" data-id="<%= c.id %>">
+        <strong><%= c.username %></strong>
+        <span><%= c.content %></span>
+        <button class="btn danger delete-comment" data-id="<%= c.id %>">Delete</button>
+      </div>
+    <% }) %>
+    <% if (recentComments.length === 0) { %><p>No comments.</p><% } %>
+  </div>
+</section>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.delete-comment').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const r = await fetch(`/admin/comments/${id}/delete`, { method: 'POST' });
+      if (r.ok) btn.closest('.comment').remove();
+    });
+  });
+});
+</script>
+<%- include('../partials/footer') %>

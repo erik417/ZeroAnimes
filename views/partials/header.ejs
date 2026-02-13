@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ZeroAnime</title>
+  <meta name="description" content="Watch anime online: popular, trending and new episodes." />
+  <link rel="stylesheet" href="/public/css/styles.css" />
+  <script>
+    (function(){try{var m=localStorage.getItem('theme');if(m==='light'){document.documentElement.classList.remove('dark');}else{document.documentElement.classList.add('dark');}}catch(e){}})();
+  </script>
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="logo"><a href="/">Zero<span>Anime</span></a></div>
+    <form action="/" method="get" class="searchbar">
+      <input type="text" name="q" placeholder="Search anime..." value="<%= q || '' %>" />
+    </form>
+    <nav class="nav">
+      <a href="/genre/Action">Action</a>
+      <a href="/genre/Romance">Romance</a>
+      <a href="/genre/Fantasy">Fantasy</a>
+      <a href="/genre/Horror">Horror</a>
+      <a href="/genre/Comedy">Comedy</a>
+      <a href="/genre/Isekai">Isekai</a>
+    </nav>
+    <div class="user-actions">
+      <button id="themeToggle" title="Toggle theme">🌓</button>
+      <% if (user) { %>
+        <a href="/profile" class="btn">Hi, <%= user.username %></a>
+        <form action="/logout" method="post" style="display:inline"><button class="btn danger">Logout</button></form>
+      <% } else { %>
+        <a href="/login" class="btn">Login</a>
+        <a href="/register" class="btn primary">Register</a>
+      <% } %>
+    </div>
+  </header>
+  <main class="container">

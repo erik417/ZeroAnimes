@@ -1,0 +1,76 @@
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#0b0b10;color:#f5f5f7}
+html.dark{background:#0b0b10;color:#f5f5f7}
+html:not(.dark){background:#f6f6fb;color:#111}
+body.app{min-height:100vh;display:flex;flex-direction:column}
+a{text-decoration:none;color:inherit}
+img{max-width:100%;display:block}
+.container{width:min(1200px,92vw);margin:0 auto;padding:24px 0}
+.topbar{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:16px 24px;position:sticky;top:0;background:rgba(10,10,16,.9);backdrop-filter:blur(8px);z-index:10;border-bottom:1px solid rgba(255,255,255,.06)}
+html:not(.dark) .topbar{background:rgba(255,255,255,.9);border-bottom:1px solid rgba(0,0,0,.05)}
+.logo a{font-weight:800;font-size:22px;letter-spacing:.5px}
+.logo span{color:#a855f7}
+.searchbar{flex:1}
+.searchbar input{width:100%;padding:10px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:#111827;color:#fff}
+html:not(.dark) .searchbar input{background:#fff;color:#111;border:1px solid rgba(0,0,0,.1)}
+.nav{display:flex;gap:12px;flex-wrap:wrap}
+.nav a{padding:6px 10px;border-radius:999px;background:rgba(168,85,247,.12);color:#c9a6ff;font-size:13px;transition:.2s}
+.nav a:hover{background:rgba(168,85,247,.3);transform:translateY(-1px)}
+.user-actions{display:flex;gap:8px;align-items:center}
+.btn{padding:8px 12px;border-radius:10px;background:#1f2937;color:#fff;border:none;cursor:pointer;transition:.2s}
+.btn.primary{background:#a855f7}
+.btn.danger{background:#ef4444}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.hero{margin:16px 0}
+.slider{display:flex;overflow:hidden;border-radius:20px;min-height:220px;position:relative}
+.slide{min-width:100%;display:flex;align-items:flex-end;background-size:cover;background-position:center;transition:transform .6s ease}
+.slide-caption{background:linear-gradient(transparent,rgba(0,0,0,.7));padding:24px;color:#fff;width:100%}
+.section{margin:28px 0}
+.section h3{margin-bottom:12px;font-size:20px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}
+.card{background:#111827;border-radius:16px;overflow:hidden;transition:.2s;border:1px solid rgba(255,255,255,.06)}
+html:not(.dark) .card{background:#fff;border:1px solid rgba(0,0,0,.08)}
+.card:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,.3)}
+.card-body{padding:10px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{background:rgba(168,85,247,.2);color:#d2b0ff;padding:2px 8px;border-radius:999px;font-size:11px}
+.episode-row{display:flex;gap:12px;overflow:auto;padding-bottom:6px}
+.episode-pill{display:flex;gap:10px;align-items:center;background:#111827;border-radius:14px;padding:8px 12px;min-width:220px;border:1px solid rgba(255,255,255,.06);transition:.2s}
+.episode-pill:hover{transform:translateY(-2px)}
+.anime-hero{display:grid;grid-template-columns:220px 1fr;gap:20px;align-items:start}
+.anime-hero .cover{border-radius:18px;border:1px solid rgba(255,255,255,.08)}
+.desc{margin:12px 0;color:#cbd5e1}
+.episodes-list{display:flex;flex-direction:column;gap:8px}
+.episode-item{padding:10px 12px;background:#111827;border-radius:12px;border:1px solid rgba(255,255,255,.06)}
+.comment-form textarea{width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:#0f172a;color:#fff;margin:8px 0}
+.comments{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.comment{padding:10px 12px;background:#111827;border-radius:12px;border:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px}
+.comment span{opacity:.7;font-size:12px}
+.auth{max-width:420px;margin:0 auto}
+.auth-form{display:flex;flex-direction:column;gap:10px}
+.auth-form input,.auth-form textarea,.form input,.form textarea{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#0f172a;color:#fff}
+.form{display:flex;flex-direction:column;gap:10px}
+.watch .player-container{background:#0b0f1a;border-radius:16px;padding:12px;border:1px solid rgba(255,255,255,.08)}
+.player-container video{width:100%;border-radius:12px}
+.controls{display:flex;gap:12px;align-items:center;margin-top:10px}
+.footer{margin-top:auto;padding:18px;text-align:center;opacity:.7}
+.history-list{display:flex;flex-direction:column;gap:8px}
+.history-item{padding:10px 12px;background:#111827;border-radius:12px;border:1px solid rgba(255,255,255,.06);display:flex;gap:12px;align-items:center;justify-content:space-between}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.stat-card{padding:12px;border-radius:12px;background:#111827;border:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px}
+.admin-actions{margin:10px 0}
+.table{display:flex;flex-direction:column;gap:8px}
+.row{display:grid;grid-template-columns:2fr 2fr 1fr 1fr;gap:8px;padding:10px;border-radius:12px;background:#111827;border:1px solid rgba(255,255,255,.06)}
+.row.head{background:#1f2937;font-weight:700}
+.admin-episode{display:flex;align-items:center;justify-content:space-between}
+.error{color:#f87171}
+.error-list{margin-bottom:10px}
+@media (max-width:900px){
+  .topbar{flex-wrap:wrap}
+  .nav{order:3;width:100%}
+  .searchbar{order:2;width:100%}
+  .anime-hero{grid-template-columns:1fr}
+  .row{grid-template-columns:1fr;gap:4px}
+  .controls{flex-direction:column;align-items:flex-start}
+}
+

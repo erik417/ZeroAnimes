@@ -1,0 +1,14 @@
+<%- include('../partials/header', { q: '' }) %>
+<section class="auth">
+  <h2>Admin Login</h2>
+  <% if (error) { %><p class="error"><%= error %></p><% } %>
+  <form action="/admin/login" method="post" class="auth-form">
+    <label>Username</label>
+    <input name="username" required />
+    <label>Password</label>
+    <input name="password" type="password" required />
+    <button class="btn primary">Login</button>
+  </form>
+</section>
+<%- include('../partials/footer') %>
+

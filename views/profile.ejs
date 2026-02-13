@@ -1,0 +1,35 @@
+<%- include('partials/header', { q: '' }) %>
+<section class="section">
+  <h3>Your Favorites</h3>
+  <div class="card-grid">
+    <% favorites.forEach(a => { %>
+      <a class="card" href="/anime/<%= a.slug %>">
+        <img src="<%= a.cover_path || '/public/img/placeholder.svg' %>" alt="<%= a.title %>"/>
+        <div class="card-body">
+          <h4><%= a.title %></h4>
+        </div>
+      </a>
+    <% }) %>
+    <% if (favorites.length === 0) { %>
+      <p>No favorites yet.</p>
+    <% } %>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Watch History</h3>
+  <div class="history-list">
+    <% history.forEach(h => { %>
+      <a class="history-item" href="/watch/<%= h.episode_id %>">
+        <strong><%= h.anime_title %></strong>
+        <span>Episode <%= h.number %></span>
+        <em>Last at <%= Math.floor(h.last_time) %>s</em>
+      </a>
+    <% }) %>
+    <% if (history.length === 0) { %>
+      <p>No history yet.</p>
+    <% } %>
+  </div>
+</section>
+<%- include('partials/footer') %>
+

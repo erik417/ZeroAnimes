@@ -1,0 +1,81 @@
+<%- include('partials/header', { q: '' }) %>
+<section class="anime-hero">
+  <img class="cover" src="<%= anime.cover_path || '/public/img/placeholder.svg' %>" alt="<%= anime.title %>"/>
+  <div class="meta">
+    <h1><%= anime.title %></h1>
+    <div class="tags">
+      <% genres.forEach(g => { %><span class="tag"><%= g %></span><% }) %>
+    </div>
+    <p class="desc"><%= anime.description %></p>
+    <div class="actions">
+      <% if (user) { %>
+        <% if (isFav) { %>
+          <button class="btn" id="favBtn" data-anime="<%= anime.id %>" data-state="on">★ In Favorites</button>
+        <% } else { %>
+          <button class="btn" id="favBtn" data-anime="<%= anime.id %>" data-state="off">☆ Add to Favorites</button>
+        <% } %>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Episodes</h3>
+  <div class="episodes-list">
+    <% episodes.forEach(e => { %>
+      <a class="episode-item" href="/watch/<%= e.id %>">Episode <%= e.number %> — <%= e.title %></a>
+    <% }) %>
+  </div>
+</section>
+
+<section class="section">
+  <h3>Comments</h3>
+  <% if (user) { %>
+  <form id="commentForm" class="comment-form">
+    <input type="hidden" name="anime_id" value="<%= anime.id %>"/>
+    <textarea name="content" rows="3" placeholder="Write a comment..."></textarea>
+    <button class="btn primary">Post</button>
+  </form>
+  <% } else { %>
+    <p><a href="/login">Login</a> to comment.</p>
+  <% } %>
+  <div class="comments">
+    <% comments.forEach(c => { %>
+      <div class="comment">
+        <strong><%= c.username %></strong>
+        <span><%= new Date(c.created_at).toLocaleString() %></span>
+        <p><%= c.content %></p>
+      </div>
+    <% }) %>
+  </div>
+</section>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const favBtn = document.getElementById('favBtn');
+  if (favBtn) {
+    favBtn.addEventListener('click', async () => {
+      const id = favBtn.dataset.anime;
+      const state = favBtn.dataset.state;
+      if (state === 'off') {
+        const r = await fetch(`/anime/${id}/favorite`, {method:'POST'});
+        if (r.ok) { favBtn.dataset.state='on'; favBtn.textContent='★ In Favorites'; }
+      } else {
+        const r = await fetch(`/anime/${id}/favorite`, {method:'DELETE'});
+        if (r.ok) { favBtn.dataset.state='off'; favBtn.textContent='☆ Add to Favorites'; }
+      }
+    });
+  }
+  const form = document.getElementById('commentForm');
+  if (form) {
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const data = new FormData(form);
+      const payload = Object.fromEntries(data.entries());
+      const r = await fetch('/comments', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+      if (r.ok) location.reload();
+    });
+  }
+});
+</script>
+<%- include('partials/footer') %>
+

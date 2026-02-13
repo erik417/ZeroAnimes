@@ -1,0 +1,24 @@
+<%- include('../partials/header', { q: '' }) %>
+<section class="section">
+  <h3>Upload Video</h3>
+  <form class="form" action="/admin/videos" method="post" enctype="multipart/form-data">
+    <label>Video File</label>
+    <input type="file" name="video" accept="video/*" required />
+    <button class="btn primary">Upload</button>
+  </form>
+</section>
+
+<section class="section">
+  <h3>Uploaded Files</h3>
+  <div class="episodes-list">
+    <% files.forEach(f => { %>
+      <div class="episode-item admin-episode">
+        <span><%= f.name %></span>
+        <a class="btn" href="<%= f.url %>" target="_blank">Open</a>
+      </div>
+    <% }) %>
+    <% if (files.length === 0) { %><p>No files yet.</p><% } %>
+  </div>
+</section>
+<%- include('../partials/footer') %>
+
