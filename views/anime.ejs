@@ -7,23 +7,35 @@
       <% genres.forEach(g => { %><span class="tag"><%= g %></span><% }) %>
     </div>
     <p class="desc"><%= anime.description %></p>
-    <div class="actions">
+    <div class="actions anime-actions">
       <% if (user) { %>
         <% if (isFav) { %>
-          <button class="btn" id="favBtn" data-anime="<%= anime.id %>" data-state="on">★ In Favorites</button>
+          <button class="btn" id="favBtn" data-anime="<%= anime.id %>" data-state="on">★ В избранном</button>
         <% } else { %>
-          <button class="btn" id="favBtn" data-anime="<%= anime.id %>" data-state="off">☆ Add to Favorites</button>
+          <button class="btn" id="favBtn" data-anime="<%= anime.id %>" data-state="off">☆ В избранное</button>
         <% } %>
       <% } %>
+      <div class="reaction">
+        <% if (user) { %>
+          <button class="btn like-btn <%= userLike === 1 ? 'active' : '' %>" id="likeBtn" data-anime="<%= anime.id %>" data-state="<%= userLike === 1 ? 'on' : 'off' %>">👍 <span class="like-text">Лайк</span></button>
+        <% } else { %>
+          <a class="btn" href="/login">Войти чтобы лайкнуть</a>
+        <% } %>
+        <span class="like-count" id="likeCount"><%= likeCount %></span>
+      </div>
     </div>
   </div>
 </section>
 
 <section class="section">
   <h3>Episodes</h3>
-  <div class="episodes-list">
+  <div class="episodes-grid">
     <% episodes.forEach(e => { %>
-      <a class="episode-item" href="/watch/<%= e.id %>">Episode <%= e.number %> — <%= e.title %></a>
+      <a class="episode-card" href="/watch/<%= e.id %>">
+        <div class="episode-number">Серия <%= e.number %></div>
+        <div class="episode-title"><%= e.title || ('Episode ' + e.number) %></div>
+        <div class="episode-action">Смотреть →</div>
+      </a>
     <% }) %>
   </div>
 </section>
@@ -56,12 +68,32 @@ document.addEventListener('DOMContentLoaded', () => {
     favBtn.addEventListener('click', async () => {
       const id = favBtn.dataset.anime;
       const state = favBtn.dataset.state;
+      const labels = { on: '★ В избранном', off: '☆ В избранное' };
       if (state === 'off') {
         const r = await fetch(`/anime/${id}/favorite`, {method:'POST'});
-        if (r.ok) { favBtn.dataset.state='on'; favBtn.textContent='★ In Favorites'; }
+        if (r.ok) { favBtn.dataset.state='on'; favBtn.textContent = labels.on; }
       } else {
         const r = await fetch(`/anime/${id}/favorite`, {method:'DELETE'});
-        if (r.ok) { favBtn.dataset.state='off'; favBtn.textContent='☆ Add to Favorites'; }
+        if (r.ok) { favBtn.dataset.state='off'; favBtn.textContent = labels.off; }
+      }
+    });
+  }
+  const likeBtn = document.getElementById('likeBtn');
+  if (likeBtn) {
+    likeBtn.addEventListener('click', async () => {
+      const state = likeBtn.dataset.state;
+      if (state === 'on') return;
+      const animeId = likeBtn.dataset.anime;
+      const r = await fetch('/like', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ anime_id: animeId, value: 1 })
+      });
+      if (r.ok) {
+        likeBtn.dataset.state = 'on';
+        likeBtn.classList.add('active');
+        const countEl = document.getElementById('likeCount');
+        if (countEl) countEl.textContent = String(Number(countEl.textContent || 0) + 1);
       }
     });
   }

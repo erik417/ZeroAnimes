@@ -6,16 +6,28 @@
       <% errors.forEach(e => { %><p class="error"><%= e.msg %></p><% }) %>
     </div>
   <% } %>
-  <form action="/register" method="post" class="auth-form">
-    <label>Username</label>
-    <input name="username" required value="<%= (values && values.username) || '' %>" />
-    <label>Email</label>
-    <input name="email" type="email" required value="<%= (values && values.email) || '' %>" />
-    <label>Password</label>
-    <input name="password" type="password" required />
-    <button class="btn primary">Register</button>
-  </form>
+  <% if (notice) { %><p><%= notice %></p><% } %>
+  <% if (pendingEmail) { %>
+    <form action="/register/verify" method="post" class="auth-form">
+      <label>Email</label>
+      <input name="email" type="email" required value="<%= pendingEmail %>" />
+      <label>Verification code</label>
+      <input name="code" required />
+      <button class="btn primary">Verify</button>
+    </form>
+  <% } else { %>
+    <form action="/register" method="post" class="auth-form">
+      <label>Username</label>
+      <input name="username" required value="<%= (values && values.username) || '' %>" />
+      <label>Email</label>
+      <input name="email" type="email" required value="<%= (values && values.email) || '' %>" />
+      <label>Password</label>
+      <input name="password" type="password" required />
+      <label>Captcha: <%= captchaQuestion %></label>
+      <input name="captcha" required />
+      <button class="btn primary">Register</button>
+    </form>
+  <% } %>
   <p>Already have an account? <a href="/login">Login</a></p>
 </section>
 <%- include('../partials/footer') %>
-

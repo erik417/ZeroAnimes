@@ -99,6 +99,19 @@ CREATE TABLE IF NOT EXISTS watch_history (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS email_verifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL,
+  email TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  code TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_email_verifications_email ON email_verifications(email);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_email_verifications_username ON email_verifications(username);
 `);
 
 // Seed admin if not exists (password: admin123)
@@ -112,4 +125,3 @@ if (!adminExists) {
 }
 
 module.exports = db;
-

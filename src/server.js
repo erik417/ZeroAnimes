@@ -6,6 +6,7 @@ const SQLiteStore = require('connect-sqlite3')(session);
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
+const nodemailer = require('nodemailer');
 const { body, validationResult } = require('express-validator');
 const slugify = require('slugify');
 const dayjs = require('dayjs');
@@ -41,6 +42,17 @@ app.use(
 const authLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
 const commentLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
 
+const mailTransport =
+  process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS
+    ? nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT || 587),
+        secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      })
+    : null;
+const mailFrom = process.env.SMTP_FROM || process.env.SMTP_USER || '';
+
 // Views & static
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
@@ -69,6 +81,24 @@ function requireAdmin(req, res, next) {
   if (!req.session.user || !req.session.user.is_admin) return res.redirect('/admin/login');
   next();
 }
+function setCaptcha(req) {
+  const a = Math.floor(Math.random() * 9) + 1;
+  const b = Math.floor(Math.random() * 9) + 1;
+  req.session.captchaAnswer = String(a + b);
+  return `${a} + ${b} = ?`;
+}
+function generateVerificationCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+function sendVerificationEmail(to, code) {
+  if (!mailTransport || !mailFrom) return Promise.reject(new Error('Email service not configured'));
+  return mailTransport.sendMail({
+    from: mailFrom,
+    to,
+    subject: 'ZeroAnime verification code',
+    text: `Your verification code: ${code}`,
+  });
+}
 function genresArrayToString(genres) {
   if (Array.isArray(genres)) return genres.join(',');
   return String(genres || '');
@@ -86,8 +116,10 @@ app.use((req, res, next) => {
 // Home page
 app.get('/', (req, res) => {
   const q = (req.query.q || '').trim();
-  const where = q ? `WHERE title LIKE ?` : '';
-  const params = q ? [`%${q}%`] : [];
+  const words = q ? q.split(/\s+/).map((w) => w.trim()).filter(Boolean) : [];
+  const tokens = Array.from(new Set(words)).slice(0, 8);
+  const where = tokens.length ? `WHERE (${tokens.map(() => 'title LIKE ?').join(' OR ')})` : '';
+  const params = tokens.map((t) => `%${t}%`);
   const anime = db.prepare(`SELECT * FROM anime ${where} ORDER BY created_at DESC LIMIT 24`).all(...params);
   const popular = db
     .prepare(
@@ -133,7 +165,20 @@ app.get('/anime/:slug', (req, res) => {
   const isFav =
     req.session.user &&
     db.prepare('SELECT 1 FROM favorites WHERE user_id=? AND anime_id=?').get(req.session.user.id, anime.id);
-  res.render('anime', { anime, episodes, comments, isFav: !!isFav, genres: genresStringToArray(anime.genres) });
+  const likeCount = db.prepare('SELECT COUNT(*) AS c FROM likes WHERE anime_id=? AND value=1').get(anime.id).c;
+  const userLike =
+    req.session.user &&
+    db.prepare('SELECT value FROM likes WHERE user_id=? AND anime_id=? AND episode_id IS NULL')
+      .get(req.session.user.id, anime.id)?.value;
+  res.render('anime', {
+    anime,
+    episodes,
+    comments,
+    isFav: !!isFav,
+    genres: genresStringToArray(anime.genres),
+    likeCount,
+    userLike: Number(userLike) === 1 ? 1 : 0,
+  });
 });
 
 // Watch episode
@@ -156,35 +201,164 @@ app.get('/watch/:episodeId', (req, res) => {
 });
 
 // Auth
-app.get('/register', (req, res) => res.render('auth/register', { errors: [], values: {} }));
+app.get('/register', (req, res) =>
+  res.render('auth/register', {
+    errors: [],
+    values: {},
+    captchaQuestion: setCaptcha(req),
+    pendingEmail: null,
+    notice: null,
+  })
+);
 app.post(
   '/register',
   authLimiter,
   body('username').isLength({ min: 3, max: 20 }),
   body('email').isEmail(),
   body('password').isLength({ min: 6 }),
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty())
-      return res.status(400).render('auth/register', { errors: errors.array(), values: req.body });
+    const captchaOk =
+      req.body.captcha && req.session.captchaAnswer && req.body.captcha.trim() === req.session.captchaAnswer;
+    if (!errors.isEmpty() || !captchaOk) {
+      const list = errors.array();
+      if (!captchaOk) list.push({ msg: 'Invalid captcha' });
+      return res
+        .status(400)
+        .render('auth/register', {
+          errors: list,
+          values: req.body,
+          captchaQuestion: setCaptcha(req),
+          pendingEmail: null,
+          notice: null,
+        });
+    }
     const { username, email, password } = req.body;
+    db.prepare('DELETE FROM email_verifications WHERE expires_at < ?').run(dayjs().toISOString());
+    const existingUser = db.prepare('SELECT 1 FROM users WHERE username=? OR email=?').get(username, email);
+    if (existingUser) {
+      return res
+        .status(400)
+        .render('auth/register', {
+          errors: [{ msg: 'Username or email exists' }],
+          values: req.body,
+          captchaQuestion: setCaptcha(req),
+          pendingEmail: null,
+          notice: null,
+        });
+    }
+    const pending = db.prepare('SELECT 1 FROM email_verifications WHERE username=? OR email=?').get(username, email);
+    if (pending) {
+      return res
+        .status(400)
+        .render('auth/register', {
+          errors: [{ msg: 'Verification already sent. Check your email.' }],
+          values: req.body,
+          captchaQuestion: setCaptcha(req),
+          pendingEmail: email,
+          notice: null,
+        });
+    }
     try {
       const hash = bcrypt.hashSync(password, 10);
+      const code = generateVerificationCode();
+      const expiresAt = dayjs().add(15, 'minute').toISOString();
       db.prepare(
-        'INSERT INTO users (username, email, password_hash, is_admin, created_at) VALUES (?, ?, ?, ?, ?)'
-      ).run(username, email, hash, 0, dayjs().toISOString());
-      res.redirect('/login');
+        'INSERT INTO email_verifications (username, email, password_hash, code, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+      ).run(username, email, hash, code, expiresAt, dayjs().toISOString());
+      try {
+        await sendVerificationEmail(email, code);
+        res.render('auth/register', {
+          errors: [],
+          values: {},
+          captchaQuestion: setCaptcha(req),
+          pendingEmail: email,
+          notice: 'Verification code sent to your email.',
+        });
+      } catch (mailErr) {
+        db.prepare('DELETE FROM email_verifications WHERE email=?').run(email);
+        res
+          .status(500)
+          .render('auth/register', {
+            errors: [{ msg: 'Email service not configured or unavailable' }],
+            values: req.body,
+            captchaQuestion: setCaptcha(req),
+            pendingEmail: null,
+            notice: null,
+          });
+      }
     } catch (e) {
-      res.status(400).render('auth/register', { errors: [{ msg: 'Username or email exists' }], values: req.body });
+      res
+        .status(400)
+        .render('auth/register', {
+          errors: [{ msg: 'Username or email exists' }],
+          values: req.body,
+          captchaQuestion: setCaptcha(req),
+          pendingEmail: null,
+          notice: null,
+        });
     }
   }
 );
-app.get('/login', (req, res) => res.render('auth/login', { error: null }));
+app.post('/register/verify', authLimiter, (req, res) => {
+  const email = (req.body.email || '').trim();
+  const code = (req.body.code || '').trim();
+  if (!email || !code) {
+    return res
+      .status(400)
+      .render('auth/register', {
+        errors: [{ msg: 'Email and code are required' }],
+        values: {},
+        captchaQuestion: setCaptcha(req),
+        pendingEmail: email || null,
+        notice: null,
+      });
+  }
+  db.prepare('DELETE FROM email_verifications WHERE expires_at < ?').run(dayjs().toISOString());
+  const row = db.prepare('SELECT * FROM email_verifications WHERE email=? AND code=?').get(email, code);
+  if (!row) {
+    return res
+      .status(400)
+      .render('auth/register', {
+        errors: [{ msg: 'Invalid or expired code' }],
+        values: {},
+        captchaQuestion: setCaptcha(req),
+        pendingEmail: email,
+        notice: null,
+      });
+  }
+  try {
+    db.prepare(
+      'INSERT INTO users (username, email, password_hash, is_admin, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).run(row.username, row.email, row.password_hash, 0, dayjs().toISOString());
+    db.prepare('DELETE FROM email_verifications WHERE id=?').run(row.id);
+    res.redirect('/login');
+  } catch (e) {
+    db.prepare('DELETE FROM email_verifications WHERE id=?').run(row.id);
+    res
+      .status(400)
+      .render('auth/register', {
+        errors: [{ msg: 'Username or email exists' }],
+        values: {},
+        captchaQuestion: setCaptcha(req),
+        pendingEmail: null,
+        notice: null,
+      });
+  }
+});
+app.get('/login', (req, res) => res.render('auth/login', { error: null, captchaQuestion: setCaptcha(req) }));
 app.post('/login', authLimiter, (req, res) => {
   const { username, password } = req.body;
+  const captchaOk =
+    req.body.captcha && req.session.captchaAnswer && req.body.captcha.trim() === req.session.captchaAnswer;
+  if (!captchaOk) {
+    return res.status(401).render('auth/login', { error: 'Invalid captcha', captchaQuestion: setCaptcha(req) });
+  }
   const user = db.prepare('SELECT * FROM users WHERE username=?').get(username);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    return res.status(401).render('auth/login', { error: 'Invalid credentials' });
+    return res
+      .status(401)
+      .render('auth/login', { error: 'Invalid credentials', captchaQuestion: setCaptcha(req) });
   }
   req.session.user = { id: user.id, username: user.username, is_admin: !!user.is_admin };
   res.redirect('/');
@@ -260,12 +434,21 @@ app.post('/progress', requireAuth, (req, res) => {
 });
 
 // Admin
-app.get('/admin/login', (req, res) => res.render('admin/login', { error: null }));
+app.get('/admin/login', (req, res) =>
+  res.render('admin/login', { error: null, captchaQuestion: setCaptcha(req) })
+);
 app.post('/admin/login', authLimiter, (req, res) => {
   const { username, password } = req.body;
+  const captchaOk =
+    req.body.captcha && req.session.captchaAnswer && req.body.captcha.trim() === req.session.captchaAnswer;
+  if (!captchaOk) {
+    return res.status(401).render('admin/login', { error: 'Invalid captcha', captchaQuestion: setCaptcha(req) });
+  }
   const user = db.prepare('SELECT * FROM users WHERE username=? AND is_admin=1').get(username);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    return res.status(401).render('admin/login', { error: 'Invalid credentials' });
+    return res
+      .status(401)
+      .render('admin/login', { error: 'Invalid credentials', captchaQuestion: setCaptcha(req) });
   }
   req.session.user = { id: user.id, username: user.username, is_admin: true };
   res.redirect('/admin');

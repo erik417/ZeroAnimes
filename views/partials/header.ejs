@@ -7,7 +7,7 @@
   <meta name="description" content="Watch anime online: popular, trending and new episodes." />
   <link rel="stylesheet" href="/public/css/styles.css" />
   <script>
-    (function(){try{var m=localStorage.getItem('theme');if(m==='light'){document.documentElement.classList.remove('dark');}else{document.documentElement.classList.add('dark');}}catch(e){}})();
+    (function(){try{var m=localStorage.getItem('theme');if(m==='dark'){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');localStorage.setItem('theme','light');}}catch(e){}})();
   </script>
 </head>
 <body class="app">
@@ -23,9 +23,14 @@
       <a href="/genre/Horror">Horror</a>
       <a href="/genre/Comedy">Comedy</a>
       <a href="/genre/Isekai">Isekai</a>
+      <% if (user && user.is_admin) { %>
+        <a href="/admin">Админ панель</a>
+        <a href="/admin/anime/new">Добавить аниме</a>
+        <a href="/admin/videos">Загрузить видео</a>
+      <% } %>
     </nav>
     <div class="user-actions">
-      <button id="themeToggle" title="Toggle theme">🌓</button>
+      <button id="themeToggle" class="btn" title="Theme">🌙</button>
       <% if (user) { %>
         <a href="/profile" class="btn">Hi, <%= user.username %></a>
         <form action="/logout" method="post" style="display:inline"><button class="btn danger">Logout</button></form>
