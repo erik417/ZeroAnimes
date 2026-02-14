@@ -17,6 +17,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security & basic middleware
+app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -106,6 +107,8 @@ function generateVerificationCode() {
 }
 function sendVerificationEmail(to, code) {
   if (!mailTransport || !mailFrom) return Promise.reject(new Error('Email service not configured'));
+  const provider = process.env.SMTP_HOST ? 'smtp' : process.env.GMAIL_USER ? 'gmail' : 'unknown';
+  console.log(`Sending verification email via ${provider} to ${to}`);
   return mailTransport.sendMail({
     from: mailFrom,
     to,
@@ -291,6 +294,7 @@ app.post(
           notice: 'Verification code sent to your email.',
         });
       } catch (mailErr) {
+        console.error('Email send failed:', mailErr.message || mailErr);
         db.prepare('DELETE FROM email_verifications WHERE email=?').run(email);
         res
           .status(500)
