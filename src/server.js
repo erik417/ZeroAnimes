@@ -50,8 +50,14 @@ const mailTransport =
         secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
         auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
       })
+    : process.env.GMAIL_USER && process.env.GMAIL_PASS
+    ? nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS },
+      })
     : null;
-const mailFrom = process.env.SMTP_FROM || process.env.SMTP_USER || '';
+const mailFrom =
+  process.env.SMTP_FROM || process.env.GMAIL_FROM || process.env.SMTP_USER || process.env.GMAIL_USER || '';
 
 // Views & static
 app.set('view engine', 'ejs');
