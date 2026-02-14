@@ -36,6 +36,7 @@
           <a href="/admin">Админ панель</a>
           <a href="/admin/anime/new">Добавить аниме</a>
           <a href="/admin/videos">Загрузить видео</a>
+          <a href="/admin/support">Техподдержка</a>
         <% } %>
       </nav>
       <div class="user-actions">
@@ -48,12 +49,12 @@
         <% } %>
         <button id="themeToggle" class="btn" title="Theme"></button>
         <% if (user) { %>
-          <a href="/verify-request" class="btn">Заявка на галочку</a>
+          <a href="/verify-request" class="btn">Получить галочку <img class="checkmark" src="/public/img/checkmark.png" alt="Галочка" /></a>
           <a href="/user/<%= user.username %>" class="btn user-badge">
             <img class="user-avatar" src="<%= user.avatar_path || '/public/img/placeholder.webp' %>" alt="<%= user.username %>" />
             <span>Профиль</span>
             <% if (user.is_verified) { %>
-              <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" />
+              <img class="checkmark" src="/public/img/checkmark.png" alt="Галочка" />
             <% } %>
           </a>
           <form action="/logout" method="post" style="display:inline"><button class="btn danger">Logout</button></form>
@@ -63,5 +64,8 @@
         <% } %>
       </div>
     </header>
+  <% } %>
+  <% if (user) { %>
+    <a href="/support" class="support-fab" title="Техподдержка" aria-label="Техподдержка">?</a>
   <% } %>
   <main class="container">

@@ -32,27 +32,37 @@
   </div>
 </section>
 <section class="section">
-  <h3>Verification</h3>
+  <h3>Галочка</h3>
   <div class="card">
     <div class="card-body verify-card">
       <div class="verify-row">
-        <span>Status:</span>
-        <% if (user && user.is_verified) { %>
-          <strong>Verified <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" /></strong>
-        <% } else if (verifyRequest && verifyRequest.status === 'pending') { %>
-          <strong>Pending</strong>
+        <span>Заявка:</span>
+        <% if (verifyRequest && verifyRequest.status === 'pending') { %>
+          <strong>На рассмотрении</strong>
         <% } else if (verifyRequest && verifyRequest.status === 'rejected') { %>
-          <strong>Rejected</strong>
+          <strong>Отклонена</strong>
         <% } else { %>
-          <strong>Not verified</strong>
+          <strong>Не подавалась</strong>
+        <% } %>
+      </div>
+      <div class="verify-row">
+        <span>Статус:</span>
+        <% if (user && user.is_verified) { %>
+          <strong>Подтверждено <img class="checkmark" src="/public/img/checkmark.png" alt="Галочка" /></strong>
+        <% } else if (verifyRequest && verifyRequest.status === 'pending') { %>
+          <strong>Ожидает</strong>
+        <% } else if (verifyRequest && verifyRequest.status === 'rejected') { %>
+          <strong>Отклонено</strong>
+        <% } else { %>
+          <strong>Нет галочки</strong>
         <% } %>
       </div>
       <% if (user && !user.is_verified && (!verifyRequest || verifyRequest.status !== 'pending')) { %>
         <form action="/verify-request" method="post">
-          <button class="btn primary">Apply for verification</button>
+          <button class="btn primary">Подать на одобрение</button>
         </form>
       <% } else if (verifyRequest && verifyRequest.status === 'pending') { %>
-        <p>Your request is awaiting admin approval.</p>
+        <p>Заявка ожидает решения администратора.</p>
       <% } %>
     </div>
   </div>

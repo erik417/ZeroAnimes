@@ -34,7 +34,19 @@
                 <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" />
               <% } %>
             </strong>
-            <span><%= new Date(p.created_at).toLocaleString() %></span>
+            <div class="forum-head-actions">
+              <span><%= new Date(p.created_at).toLocaleString() %></span>
+              <% if (user && user.username === 'er1kos') { %>
+                <div class="post-menu">
+                  <button class="post-menu-btn" type="button" aria-label="Меню поста">⋯</button>
+                  <div class="post-menu-list">
+                    <form class="post-menu-form" action="/forum/<%= p.id %>/delete" method="post">
+                      <button class="post-menu-item danger" type="submit">Удалить</button>
+                    </form>
+                  </div>
+                </div>
+              <% } %>
+            </div>
           </div>
           <h4><%= p.title %></h4>
           <p><%= p.content %></p>
@@ -151,15 +163,26 @@
     <% } %>
     <script>
       const closeMenus = () => {
-        document.querySelectorAll('.comment-menu.open').forEach((m) => m.classList.remove('open'));
+        document.querySelectorAll('.comment-menu.open, .post-menu.open').forEach((m) =>
+          m.classList.remove('open')
+        );
       };
       document.addEventListener('click', (e) => {
-        if (!e.target.closest('.comment-menu')) closeMenus();
+        if (!e.target.closest('.comment-menu') && !e.target.closest('.post-menu')) closeMenus();
       });
       document.querySelectorAll('.comment-menu-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           const menu = btn.closest('.comment-menu');
+          const isOpen = menu.classList.contains('open');
+          closeMenus();
+          if (!isOpen) menu.classList.add('open');
+        });
+      });
+      document.querySelectorAll('.post-menu-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const menu = btn.closest('.post-menu');
           const isOpen = menu.classList.contains('open');
           closeMenus();
           if (!isOpen) menu.classList.add('open');

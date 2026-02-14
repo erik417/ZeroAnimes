@@ -1,5 +1,5 @@
 <%- include('partials/header', { q: '' }) %>
-<section class="watch">
+<section class="watch watch-cinema">
   <div class="watch-head">
     <a href="/" class="btn back-home" title="На главную" aria-label="На главную">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -8,20 +8,33 @@
     </a>
     <h1><a href="/anime/<%= anime.slug %>"><%= anime.title %></a> — Episode <%= episode.number %></h1>
   </div>
+  <% const hasSources = Boolean(episode.video_360 || episode.video_720 || episode.video_1080); %>
   <div class="player-container">
-    <video id="player" controls playsinline>
-      <% if (episode.video_360) { %><source src="<%= episode.video_360 %>" data-quality="360p" /><% } %>
-      <% if (episode.video_720) { %><source src="<%= episode.video_720 %>" data-quality="720p" /><% } %>
-      <% if (episode.video_1080) { %><source src="<%= episode.video_1080 %>" data-quality="1080p" /><% } %>
-    </video>
-    <div class="seek-toast" id="seekToast"></div>
-    <div class="controls">
-      <label for="quality">Quality:</label>
-      <select id="quality"></select>
-      <% if (nextEpisode) { %><a id="nextEp" class="btn primary" href="/watch/<%= nextEpisode.id %>">Next Episode »</a><% } %>
-    </div>
+    <% if (hasSources) { %>
+      <div class="player-screen">
+        <div class="player-title">
+          <div class="player-title-text"><%= anime.title %> — Episode <%= episode.number %></div>
+        </div>
+        <video id="player" controls playsinline>
+          <% if (episode.video_360) { %><source src="<%= episode.video_360 %>" data-quality="360p" /><% } %>
+          <% if (episode.video_720) { %><source src="<%= episode.video_720 %>" data-quality="720p" /><% } %>
+          <% if (episode.video_1080) { %><source src="<%= episode.video_1080 %>" data-quality="1080p" /><% } %>
+        </video>
+        <div class="seek-toast" id="seekToast"></div>
+      </div>
+      <div class="controls">
+        <label for="quality">Quality:</label>
+        <select id="quality"></select>
+        <% if (nextEpisode) { %><a id="nextEp" class="btn primary" href="/watch/<%= nextEpisode.id %>">Next Episode »</a><% } %>
+      </div>
+    <% } else { %>
+      <div class="no-video">Видео для этой серии пока недоступно.</div>
+    <% } %>
   </div>
 </section>
+<script>
+  document.body.classList.add('watch-page');
+</script>
 <script src="/public/js/player.js"></script>
 <script>
   window.__EPISODE_ID__ = <%= episode.id %>;

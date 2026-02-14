@@ -1,0 +1,55 @@
+<%- include('../partials/header', { q: '' }) %>
+<section class="section">
+  <% if (thread) { %>
+    <div class="chat-head">
+      <a class="btn chat-back" href="/admin/support"><< Все обращения</a>
+      <div class="chat-user">
+        <% if (thread.avatar_path) { %>
+          <img class="avatar" src="<%= thread.avatar_path %>" alt="<%= thread.username %>" />
+        <% } else { %>
+          <img class="avatar" src="/public/img/placeholder.webp" alt="<%= thread.username %>" />
+        <% } %>
+        <strong class="user-name">
+          <%= thread.username %>
+          <% if (thread.is_verified) { %>
+            <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" />
+          <% } %>
+        </strong>
+      </div>
+    </div>
+    <div class="hint" style="margin-bottom:8px"><strong><%= thread.subject %></strong></div>
+    <div class="chat-messages">
+      <% chatMessages.forEach((m) => { %>
+        <div class="chat-msg <%= m.sender_role === 'admin' ? 'me' : 'them' %>">
+          <div class="chat-bubble">
+            <p><%= m.message %></p>
+            <span><%= new Date(m.created_at).toLocaleString() %></span>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+    <form class="chat-form" action="/admin/support/<%= thread.id %>/message" method="post">
+      <input name="message" placeholder="Ответ техподдержки..." required />
+      <button class="btn primary">Отправить</button>
+    </form>
+  <% } else { %>
+    <h3>Техподдержка</h3>
+    <% if (messages.length === 0) { %>
+      <p>Обращений пока нет.</p>
+    <% } else { %>
+      <div class="list">
+        <% messages.forEach((m) => { %>
+          <a class="list-item" href="/admin/support/<%= m.id %>">
+            <div style="flex:1">
+              <strong><%= m.username %></strong>
+              <div class="hint"><strong><%= m.subject %></strong></div>
+              <div class="hint"><%= m.message %></div>
+            </div>
+            <span class="hint"><%= new Date(m.created_at).toLocaleString() %></span>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+  <% } %>
+</section>
+<%- include('../partials/footer') %>

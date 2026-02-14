@@ -1,22 +1,37 @@
 <%- include('partials/header', { q: '' }) %>
 <section class="section">
-  <h3>Verification Request</h3>
+  <h3>Получить галочку</h3>
+  <% if (error) { %><p class="error"><%= error %></p><% } %>
+  <% if (submitted) { %><p class="hint">Заявка подана на одобрение.</p><% } %>
+  <div class="card pricing-card">
+    <div class="pricing-top">
+      <span class="pricing-badge">Рекомендуем</span>
+      <img class="pricing-check" src="/public/img/checkmark.png" alt="Галочка" />
+    </div>
+    <div class="pricing-title">Zero+</div>
+    <div class="pricing-subtitle">Нужное одобрение</div>
+    <div class="pricing-discount">Скидка 100%</div>
+    <div class="pricing-price">
+      <span class="pricing-currency">₽</span>
+      <span class="pricing-amount">0</span>
+      <span class="pricing-period">/мес</span>
+    </div>
+    <div class="pricing-old">₽299</div>
+    <div class="pricing-actions">
+      <form action="/verify-request" method="post">
+        <button class="btn pricing-btn">Подать на одобрение</button>
+      </form>
+    </div>
+    <div class="pricing-note">Нужно одобрение администратора</div>
+  </div>
   <div class="card">
     <div class="card-body verify-card">
       <% if (user && user.is_verified) { %>
-        <p>You are verified <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" /></p>
+        <p>Галочка активна <img class="checkmark" src="/public/img/checkmark.png" alt="Галочка" /></p>
       <% } else if (request && request.status === 'pending') { %>
-        <p>Your request is pending approval.</p>
-      <% } else if (request && request.status === 'rejected') { %>
-        <p>Your request was rejected.</p>
-        <form action="/verify-request" method="post">
-          <button class="btn primary">Apply again</button>
-        </form>
+        <p>Заявка подана на одобрение.</p>
       <% } else { %>
-        <p>Apply to get a verified checkmark.</p>
-        <form action="/verify-request" method="post">
-          <button class="btn primary">Apply for verification</button>
-        </form>
+        <p>Галочка доступна после одобрения.</p>
       <% } %>
     </div>
   </div>

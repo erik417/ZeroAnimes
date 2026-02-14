@@ -1,0 +1,76 @@
+<%- include('partials/header', { q: '' }) %>
+<section class="section">
+  <% if (thread) { %>
+    <div class="chat-head">
+      <a class="btn chat-back" href="/support"><< Все обращения</a>
+      <div class="chat-user">
+        <strong class="user-name"><%= thread.subject %></strong>
+      </div>
+    </div>
+    <% if (successMessage) { %>
+      <p><%= successMessage %></p>
+    <% } %>
+    <div class="chat-messages">
+      <% chatMessages.forEach((m) => { %>
+        <div class="chat-msg <%= m.sender_role === 'user' ? 'me' : 'them' %>">
+          <div class="chat-bubble">
+            <p><%= m.message %></p>
+            <span><%= new Date(m.created_at).toLocaleString() %></span>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+    <form class="chat-form" action="/support/<%= thread.id %>/message" method="post">
+      <input name="message" placeholder="Напишите сообщение..." required />
+      <button class="btn primary">Отправить</button>
+    </form>
+  <% } else { %>
+    <h3>Техподдержка</h3>
+    <% if (errorMessage) { %>
+      <p class="error"><%= errorMessage %></p>
+    <% } %>
+    <% if (successMessage) { %>
+      <p><%= successMessage %></p>
+    <% } %>
+    <form class="form" action="/support/message" method="post">
+      <input type="text" name="subject" placeholder="Тема" required />
+      <textarea name="message" rows="5" placeholder="Опишите проблему или вопрос" required></textarea>
+      <button class="btn primary" type="submit">Отправить</button>
+    </form>
+    <div style="height:16px"></div>
+    <h3>Мои обращения</h3>
+    <% if (messages.length === 0) { %>
+      <p>Обращений пока нет.</p>
+    <% } else { %>
+      <div class="list">
+        <% messages.forEach((m) => { %>
+          <a class="list-item" href="/support/<%= m.id %>">
+            <div>
+              <strong><%= m.subject %></strong>
+              <div class="hint"><%= m.message %></div>
+            </div>
+            <span class="hint"><%= new Date(m.created_at).toLocaleString() %></span>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+    <div style="height:16px"></div>
+    <h3>Уведомления</h3>
+    <% if (notifications.length === 0) { %>
+      <p>Уведомлений пока нет.</p>
+    <% } else { %>
+      <div class="list">
+        <% notifications.forEach((n) => { %>
+          <div class="list-item">
+            <div>
+              <strong><%= n.title %></strong>
+              <div class="hint"><%= n.message %></div>
+            </div>
+            <span class="hint"><%= new Date(n.created_at).toLocaleString() %></span>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  <% } %>
+</section>
+<%- include('partials/footer') %>

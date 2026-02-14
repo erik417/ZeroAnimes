@@ -8,6 +8,8 @@ const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const slugify = require('slugify');
+const https = require('https');
+const crypto = require('crypto');
 const dayjs = require('dayjs');
 const fs = require('fs');
 const db = require('./db');
@@ -79,6 +81,46 @@ function setCaptcha(req) {
   req.session.captchaAnswer = String(a + b);
   return `${a} + ${b} = ?`;
 }
+function getBaseUrl(req) {
+  if (process.env.BASE_URL) return process.env.BASE_URL.replace(/\/+$/, '');
+  return `${req.protocol}://${req.get('host')}`;
+}
+function yookassaRequest(method, pathUrl, body, idempotenceKey) {
+  const shopId = process.env.YOOKASSA_SHOP_ID;
+  const secretKey = process.env.YOOKASSA_SECRET_KEY;
+  if (!shopId || !secretKey) return Promise.reject(new Error('NO_YOOKASSA_CREDS'));
+  const payload = body ? JSON.stringify(body) : '';
+  const auth = Buffer.from(`${shopId}:${secretKey}`).toString('base64');
+  const options = {
+    hostname: 'api.yookassa.ru',
+    path: `/v3${pathUrl}`,
+    method,
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(payload),
+      'Idempotence-Key': idempotenceKey,
+    },
+  };
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => {
+        if (!data) return resolve({ status: res.statusCode, body: null });
+        try {
+          const parsed = JSON.parse(data);
+          resolve({ status: res.statusCode, body: parsed });
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+    req.on('error', reject);
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
 function genresArrayToString(genres) {
   if (Array.isArray(genres)) return genres.join(',');
   return String(genres || '');
@@ -86,11 +128,24 @@ function genresArrayToString(genres) {
 function genresStringToArray(s) {
   return s ? s.split(',').map((g) => g.trim()).filter(Boolean) : [];
 }
+function normalizeVideoUrl(value) {
+  const v = String(value || '').trim();
+  if (!v) return '';
+  if (v.startsWith('http://') || v.startsWith('https://') || v.startsWith('/')) return v;
+  return '/uploads/videos/' + v.replace(/^\/+/, '');
+}
+function createNotification(userId, type, title, message) {
+  try {
+    db.prepare(
+      'INSERT INTO notifications (user_id, type, title, message, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).run(userId, type, title, message, dayjs().toISOString());
+  } catch (e) {}
+}
 
 app.use((req, res, next) => {
   if (req.session.user) {
     const fresh = db
-      .prepare('SELECT id, username, is_admin, is_verified, avatar_path, bio FROM users WHERE id=?')
+      .prepare('SELECT id, username, is_admin, is_verified, zero_plus, avatar_path, bio FROM users WHERE id=?')
       .get(req.session.user.id);
     if (fresh) {
       req.session.user = {
@@ -98,6 +153,7 @@ app.use((req, res, next) => {
         username: fresh.username,
         is_admin: !!fresh.is_admin,
         is_verified: !!fresh.is_verified,
+        zero_plus: !!fresh.zero_plus,
         avatar_path: fresh.avatar_path || '',
         bio: fresh.bio || '',
       };
@@ -189,6 +245,12 @@ app.get('/watch/:episodeId', (req, res) => {
   const episode = db.prepare('SELECT * FROM episodes WHERE id=?').get(episodeId);
   if (!episode) return res.status(404).send('Not found');
   const anime = db.prepare('SELECT * FROM anime WHERE id=?').get(episode.anime_id);
+  const normalizedEpisode = {
+    ...episode,
+    video_360: normalizeVideoUrl(episode.video_360),
+    video_720: normalizeVideoUrl(episode.video_720),
+    video_1080: normalizeVideoUrl(episode.video_1080),
+  };
   const nextEpisode = db
     .prepare('SELECT * FROM episodes WHERE anime_id=? AND number>? ORDER BY number ASC LIMIT 1')
     .get(episode.anime_id, episode.number);
@@ -199,7 +261,7 @@ app.get('/watch/:episodeId', (req, res) => {
     episode.id,
     dayjs().toISOString()
   );
-  res.render('watch', { anime, episode, nextEpisode });
+  res.render('watch', { anime, episode: normalizedEpisode, nextEpisode });
 });
 
 // Auth
@@ -297,6 +359,7 @@ app.post('/login', authLimiter, (req, res) => {
     username: user.username,
     is_admin: !!user.is_admin,
     is_verified: !!user.is_verified,
+    zero_plus: !!user.zero_plus,
     avatar_path: user.avatar_path || '',
     bio: user.bio || '',
   };
@@ -326,6 +389,142 @@ app.get('/profile', requireAuth, (req, res) => {
     .get(user.id);
   res.render('profile', { favorites, history, verifyRequest });
 });
+
+app.get('/support', requireAuth, (req, res) => {
+  const notifications = db
+    .prepare('SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 100')
+    .all(req.session.user.id);
+  const messages = db
+    .prepare('SELECT * FROM support_messages WHERE user_id=? ORDER BY created_at DESC LIMIT 50')
+    .all(req.session.user.id);
+  const errorType = String(req.query.error || '');
+  const errorMessage =
+    errorType === 'validation'
+      ? 'Проверьте тему (2–120 символов) и текст (5–2000 символов).'
+      : errorType === 'db'
+      ? 'Ошибка сервера при отправке. Попробуйте снова.'
+      : errorType
+      ? 'Не удалось отправить обращение. Попробуйте снова.'
+      : '';
+  const successMessage = req.query.sent ? 'Обращение отправлено.' : '';
+  res.render('support', { notifications, messages, thread: null, chatMessages: [], errorMessage, successMessage });
+});
+
+app.post(
+  '/support/message',
+  requireAuth,
+  body('subject').isLength({ min: 2, max: 120 }),
+  body('message').isLength({ min: 5, max: 2000 }),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.redirect('/support?error=validation');
+    const subject = String(req.body.subject || '').trim();
+    const message = String(req.body.message || '').trim();
+    if (!subject || !message) return res.redirect('/support?error=validation');
+    try {
+      const result = db.prepare(
+        'INSERT INTO support_messages (user_id, subject, message, created_at) VALUES (?, ?, ?, ?)'
+      ).run(req.session.user.id, subject, message, dayjs().toISOString());
+      const supportId = Number(result.lastInsertRowid);
+      db.prepare(
+        'INSERT INTO support_chat_messages (support_message_id, sender_id, sender_role, message, created_at) VALUES (?, ?, ?, ?, ?)'
+      ).run(supportId, req.session.user.id, 'user', message, dayjs().toISOString());
+      res.redirect(`/support/${supportId}?sent=1`);
+    } catch (e) {
+      try {
+        db.exec(
+          `CREATE TABLE IF NOT EXISTS support_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            subject TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+          );`
+        );
+        const result = db.prepare(
+          'INSERT INTO support_messages (user_id, subject, message, created_at) VALUES (?, ?, ?, ?)'
+        ).run(req.session.user.id, subject, message, dayjs().toISOString());
+        const supportId = Number(result.lastInsertRowid);
+        db.prepare(
+          'INSERT INTO support_chat_messages (support_message_id, sender_id, sender_role, message, created_at) VALUES (?, ?, ?, ?, ?)'
+        ).run(supportId, req.session.user.id, 'user', message, dayjs().toISOString());
+        return res.redirect(`/support/${supportId}?sent=1`);
+      } catch (e2) {
+        res.redirect('/support?error=db');
+      }
+    }
+  }
+);
+
+app.get('/support/:id', requireAuth, (req, res) => {
+  const id = Number(req.params.id);
+  const thread = db
+    .prepare(
+      `SELECT s.*, u.username, u.avatar_path, u.is_verified
+       FROM support_messages s JOIN users u ON u.id=s.user_id
+       WHERE s.id=? AND s.user_id=?`
+    )
+    .get(id, req.session.user.id);
+  if (!thread) return res.redirect('/support');
+  const chatMessages = db
+    .prepare(
+      `SELECT m.*, u.username, u.avatar_path, u.is_verified
+       FROM support_chat_messages m JOIN users u ON u.id=m.sender_id
+       WHERE m.support_message_id=?
+       ORDER BY m.created_at ASC`
+    )
+    .all(thread.id);
+  const legacyReplies = db
+    .prepare(
+      `SELECT r.*, u.username, u.avatar_path, u.is_verified
+       FROM support_replies r JOIN users u ON u.id=r.admin_id
+       WHERE r.support_message_id=?
+       ORDER BY r.created_at ASC`
+    )
+    .all(thread.id);
+  const baseMessage = {
+    sender_id: thread.user_id,
+    sender_role: 'user',
+    username: thread.username,
+    avatar_path: thread.avatar_path,
+    is_verified: thread.is_verified,
+    message: thread.message,
+    created_at: thread.created_at,
+  };
+  const safeMessages = chatMessages.length
+    ? chatMessages
+    : [baseMessage, ...legacyReplies.map((r) => ({ ...r, sender_role: 'admin', sender_id: r.admin_id }))];
+  res.render('support', {
+    notifications: [],
+    messages: [],
+    thread,
+    chatMessages: safeMessages,
+    errorMessage: '',
+    successMessage: req.query.sent ? 'Обращение отправлено.' : '',
+  });
+});
+
+app.post(
+  '/support/:id/message',
+  requireAuth,
+  body('message').isLength({ min: 1, max: 2000 }),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.redirect(`/support/${req.params.id}`);
+    const id = Number(req.params.id);
+    const thread = db
+      .prepare('SELECT id, user_id FROM support_messages WHERE id=? AND user_id=?')
+      .get(id, req.session.user.id);
+    if (!thread) return res.redirect('/support');
+    const message = String(req.body.message || '').trim();
+    if (!message) return res.redirect(`/support/${id}`);
+    db.prepare(
+      'INSERT INTO support_chat_messages (support_message_id, sender_id, sender_role, message, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).run(thread.id, req.session.user.id, 'user', message, dayjs().toISOString());
+    res.redirect(`/support/${id}`);
+  }
+);
 
 app.get('/profile/edit', requireAuth, (req, res) => {
   const user = db.prepare('SELECT username, bio, avatar_path FROM users WHERE id=?').get(req.session.user.id);
@@ -577,7 +776,8 @@ app.get('/verify-request', requireAuth, (req, res) => {
   const request = db
     .prepare('SELECT status FROM verification_requests WHERE user_id=?')
     .get(user.id);
-  res.render('verify_request', { request });
+  const submitted = req.query.submitted === '1';
+  res.render('verify_request', { request, error: null, payment: null, submitted });
 });
 
 app.post('/verify-request', requireAuth, (req, res) => {
@@ -590,7 +790,105 @@ app.post('/verify-request', requireAuth, (req, res) => {
       'INSERT INTO verification_requests (user_id, status, created_at) VALUES (?, ?, ?)'
     ).run(user.id, 'pending', dayjs().toISOString());
   }
+  res.redirect('/verify-request?submitted=1');
+});
+
+app.post('/zero-plus/buy', requireAuth, async (req, res) => {
+  const user = req.session.user;
+  if (user.zero_plus) return res.redirect('/verify-request');
+  const amountValue = '299.00';
+  const createdAt = dayjs().toISOString();
+  const insert = db.prepare(
+    'INSERT INTO zero_plus_payments (user_id, provider, status, amount, currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  );
+  const paymentId = insert.run(user.id, 'yookassa', 'initiated', 299, 'RUB', createdAt, createdAt).lastInsertRowid;
+  const idempotenceKey = crypto.randomUUID();
+  const baseUrl = getBaseUrl(req);
+  try {
+    const { body, status } = await yookassaRequest(
+      'POST',
+      '/payments',
+      {
+        amount: { value: amountValue, currency: 'RUB' },
+        capture: true,
+        confirmation: { type: 'redirect', return_url: `${baseUrl}/zero-plus/return` },
+        description: `Zero+ для пользователя ${user.username}`,
+        metadata: { user_id: user.id, payment_id: String(paymentId) },
+      },
+      idempotenceKey
+    );
+    if (!body || status >= 300) {
+      db.prepare('UPDATE zero_plus_payments SET status=?, updated_at=? WHERE id=?').run(
+        'failed',
+        dayjs().toISOString(),
+        paymentId
+      );
+      return res.status(400).render('verify_request', {
+        request: null,
+        error: 'Не удалось создать платеж. Попробуйте позже.',
+        payment: null,
+      });
+    }
+    db.prepare('UPDATE zero_plus_payments SET provider_payment_id=?, status=?, updated_at=? WHERE id=?').run(
+      body.id,
+      body.status || 'pending',
+      dayjs().toISOString(),
+      paymentId
+    );
+    if (body.confirmation && body.confirmation.confirmation_url) {
+      return res.redirect(body.confirmation.confirmation_url);
+    }
+    return res.redirect('/verify-request');
+  } catch (e) {
+    db.prepare('UPDATE zero_plus_payments SET status=?, updated_at=? WHERE id=?').run(
+      'failed',
+      dayjs().toISOString(),
+      paymentId
+    );
+    const errorText =
+      e && e.message === 'NO_YOOKASSA_CREDS'
+        ? 'Нужно настроить YOOKASSA_SHOP_ID и YOOKASSA_SECRET_KEY.'
+        : 'Ошибка платежа. Попробуйте позже.';
+    return res.status(400).render('verify_request', { request: null, error: errorText, payment: null });
+  }
+});
+
+app.get('/zero-plus/return', requireAuth, (req, res) => {
   res.redirect('/verify-request');
+});
+
+app.post('/webhooks/yookassa', (req, res) => {
+  const event = req.body;
+  if (!event || !event.object || !event.object.id) return res.status(400).send('bad');
+  const paymentId = event.object.id;
+  const status = event.object.status || event.event || 'unknown';
+  const paymentRow = db
+    .prepare('SELECT * FROM zero_plus_payments WHERE provider_payment_id=?')
+    .get(paymentId);
+  if (paymentRow) {
+    db.prepare('UPDATE zero_plus_payments SET status=?, updated_at=? WHERE id=?').run(
+      status,
+      dayjs().toISOString(),
+      paymentRow.id
+    );
+    if (event.event === 'payment.succeeded' || status === 'succeeded') {
+      db.prepare('UPDATE users SET zero_plus=1, is_verified=1 WHERE id=?').run(paymentRow.user_id);
+      const existing = db
+        .prepare('SELECT id FROM verification_requests WHERE user_id=?')
+        .get(paymentRow.user_id);
+      if (existing) {
+        db.prepare("UPDATE verification_requests SET status='approved', decided_at=? WHERE id=?").run(
+          dayjs().toISOString(),
+          existing.id
+        );
+      } else {
+        db.prepare(
+          "INSERT INTO verification_requests (user_id, status, created_at, decided_at) VALUES (?, 'approved', ?, ?)"
+        ).run(paymentRow.user_id, dayjs().toISOString(), dayjs().toISOString());
+      }
+    }
+  }
+  res.json({ ok: true });
 });
 
 app.post('/anime/:id/favorite', requireAuth, (req, res) => {
@@ -752,6 +1050,16 @@ app.post(
   }
 );
 
+app.post('/forum/:id/delete', requireAuth, (req, res) => {
+  const postId = Number(req.params.id);
+  const post = db.prepare('SELECT id FROM forum_posts WHERE id=? AND is_deleted=0').get(postId);
+  if (!post) return res.status(404).send('Post not found');
+  const canDelete = req.session.user.username === 'er1kos' || req.session.user.is_admin;
+  if (!canDelete) return res.status(403).send('Forbidden');
+  db.prepare('UPDATE forum_posts SET is_deleted=1 WHERE id=?').run(postId);
+  res.redirect(req.get('Referer') || '/forum');
+});
+
 app.post(
   '/forum/:id/comment',
   requireAuth,
@@ -791,6 +1099,15 @@ app.post('/forum/comments/:id/delete', requireAuth, (req, res) => {
     (post && post.user_id === req.session.user.id) ||
     req.session.user.is_admin;
   if (!canDelete) return res.status(403).send('Forbidden');
+  if (req.session.user.is_admin) {
+    const postInfo = db.prepare('SELECT title FROM forum_posts WHERE id=?').get(comment.post_id);
+    createNotification(
+      comment.user_id,
+      'moderation',
+      'Комментарий удалён',
+      `Администрация удалила ваш комментарий в посте "${postInfo ? postInfo.title : 'Пост'}".`
+    );
+  }
   db.prepare('UPDATE forum_post_comments SET is_deleted=1 WHERE id=?').run(commentId);
   res.redirect(req.get('Referer') || '/forum');
 });
@@ -873,6 +1190,112 @@ app.get('/admin', requireAdmin, (req, res) => {
   });
 });
 
+app.get('/admin/support', requireAdmin, (req, res) => {
+  const messages = db
+    .prepare(
+      `SELECT s.*, u.username
+       FROM support_messages s JOIN users u ON u.id=s.user_id
+       ORDER BY s.created_at DESC LIMIT 200`
+    )
+    .all();
+  res.render('admin/support', { messages, thread: null, chatMessages: [] });
+});
+
+app.get('/admin/support/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const thread = db
+    .prepare(
+      `SELECT s.*, u.username, u.avatar_path, u.is_verified
+       FROM support_messages s JOIN users u ON u.id=s.user_id
+       WHERE s.id=?`
+    )
+    .get(id);
+  if (!thread) return res.redirect('/admin/support');
+  const chatMessages = db
+    .prepare(
+      `SELECT m.*, u.username, u.avatar_path, u.is_verified
+       FROM support_chat_messages m JOIN users u ON u.id=m.sender_id
+       WHERE m.support_message_id=?
+       ORDER BY m.created_at ASC`
+    )
+    .all(thread.id);
+  const legacyReplies = db
+    .prepare(
+      `SELECT r.*, u.username, u.avatar_path, u.is_verified
+       FROM support_replies r JOIN users u ON u.id=r.admin_id
+       WHERE r.support_message_id=?
+       ORDER BY r.created_at ASC`
+    )
+    .all(thread.id);
+  const baseMessage = {
+    sender_id: thread.user_id,
+    sender_role: 'user',
+    username: thread.username,
+    avatar_path: thread.avatar_path,
+    is_verified: thread.is_verified,
+    message: thread.message,
+    created_at: thread.created_at,
+  };
+  const safeMessages = chatMessages.length
+    ? chatMessages
+    : [baseMessage, ...legacyReplies.map((r) => ({ ...r, sender_role: 'admin', sender_id: r.admin_id }))];
+  res.render('admin/support', { messages: [], thread, chatMessages: safeMessages });
+});
+
+app.post(
+  '/admin/support/:id/message',
+  requireAdmin,
+  body('message').isLength({ min: 2, max: 2000 }),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.redirect(`/admin/support/${req.params.id}`);
+    const messageId = Number(req.params.id);
+    const text = String(req.body.message || '').trim();
+    if (!text) return res.redirect(`/admin/support/${req.params.id}`);
+    const supportMessage = db
+      .prepare('SELECT user_id, subject FROM support_messages WHERE id=?')
+      .get(messageId);
+    if (!supportMessage) return res.redirect('/admin/support');
+    db.prepare(
+      'INSERT INTO support_chat_messages (support_message_id, sender_id, sender_role, message, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).run(messageId, req.session.user.id, 'admin', text, dayjs().toISOString());
+    createNotification(
+      supportMessage.user_id,
+      'support',
+      'Ответ техподдержки',
+      `Техподдержка ответила на ваше обращение "${supportMessage.subject}".`
+    );
+    res.redirect(`/admin/support/${messageId}`);
+  }
+);
+
+app.post(
+  '/admin/support/:id/reply',
+  requireAdmin,
+  body('message').isLength({ min: 2, max: 2000 }),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.redirect(`/admin/support/${req.params.id}`);
+    const messageId = Number(req.params.id);
+    const text = String(req.body.message || '').trim();
+    if (!text) return res.redirect(`/admin/support/${req.params.id}`);
+    const supportMessage = db
+      .prepare('SELECT user_id, subject FROM support_messages WHERE id=?')
+      .get(messageId);
+    if (!supportMessage) return res.redirect('/admin/support');
+    db.prepare(
+      'INSERT INTO support_chat_messages (support_message_id, sender_id, sender_role, message, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).run(messageId, req.session.user.id, 'admin', text, dayjs().toISOString());
+    createNotification(
+      supportMessage.user_id,
+      'support',
+      'Ответ техподдержки',
+      `Техподдержка ответила на ваше обращение "${supportMessage.subject}".`
+    );
+    res.redirect(`/admin/support/${messageId}`);
+  }
+);
+
 app.get('/admin/anime/new', requireAdmin, (req, res) => {
   res.render('admin/anime_form', { anime: null, errors: [], values: {} });
 });
@@ -909,6 +1332,7 @@ app.post('/admin/verify-requests/:id/approve', requireAdmin, (req, res) => {
       id
     );
     db.prepare('UPDATE users SET is_verified=1 WHERE id=?').run(row.user_id);
+    createNotification(row.user_id, 'verify', 'Галочка одобрена', 'Администрация одобрила вашу галочку.');
   }
   res.redirect('/admin/verify-requests');
 });
@@ -938,7 +1362,18 @@ app.get('/admin/forum', requireAdmin, (req, res) => {
 });
 
 app.post('/admin/forum/:id/delete', requireAdmin, (req, res) => {
-  db.prepare('UPDATE forum_posts SET is_deleted=1 WHERE id=?').run(Number(req.params.id));
+  const post = db
+    .prepare('SELECT id, user_id, title FROM forum_posts WHERE id=? AND is_deleted=0')
+    .get(Number(req.params.id));
+  if (post) {
+    db.prepare('UPDATE forum_posts SET is_deleted=1 WHERE id=?').run(post.id);
+    createNotification(
+      post.user_id,
+      'moderation',
+      'Пост удалён',
+      `Администрация удалила ваш пост "${post.title}".`
+    );
+  }
   res.redirect('/admin/forum');
 });
 
@@ -1045,7 +1480,25 @@ app.post('/admin/episodes/:id/delete', requireAdmin, (req, res) => {
 
 // Comment moderation
 app.post('/admin/comments/:id/delete', requireAdmin, (req, res) => {
-  db.prepare('UPDATE comments SET is_deleted=1 WHERE id=?').run(Number(req.params.id));
+  const id = Number(req.params.id);
+  const row = db
+    .prepare(
+      `SELECT c.user_id, a.title AS anime_title
+       FROM comments c LEFT JOIN anime a ON a.id=c.anime_id
+       WHERE c.id=? AND c.is_deleted=0`
+    )
+    .get(id);
+  if (row) {
+    db.prepare('UPDATE comments SET is_deleted=1 WHERE id=?').run(id);
+    createNotification(
+      row.user_id,
+      'moderation',
+      'Комментарий удалён',
+      row.anime_title
+        ? `Администрация удалила ваш комментарий к аниме "${row.anime_title}".`
+        : 'Администрация удалила ваш комментарий.'
+    );
+  }
   res.json({ ok: true });
 });
 
