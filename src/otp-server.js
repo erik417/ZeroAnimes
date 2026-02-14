@@ -1,5 +1,4 @@
 const express = require('express');
-const nodemailer = require('nodemailer');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
@@ -24,20 +23,12 @@ CREATE TABLE IF NOT EXISTS users (
 );
 `);
 
-const hasGmail = process.env.GMAIL_USER && process.env.GMAIL_PASS;
-const mailTransport = hasGmail
-  ? nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS },
-    })
-  : null;
-
 const page = (body) => `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OTP Register</title>
+  <title>Register</title>
 </head>
 <body style="font-family:Arial,sans-serif;max-width:720px;margin:40px auto;padding:0 16px">
 ${body}
@@ -53,25 +44,9 @@ app.get('/', (req, res) => {
         <input name="email" type="email" required /><br/><br/>
         <label>Password</label><br/>
         <input name="password" type="password" required /><br/><br/>
-        <button type="submit">Send code</button>
+        <button type="submit">Register</button>
       </form>
-      <p>Already have a code? <a href="/verify">Verify here</a></p>
-    `)
-  );
-});
-
-app.get('/verify', (req, res) => {
-  res.send(
-    page(`
-      <h1>Verify</h1>
-      <form method="post" action="/verify">
-        <label>Email</label><br/>
-        <input name="email" type="email" required /><br/><br/>
-        <label>Code</label><br/>
-        <input name="code" required /><br/><br/>
-        <button type="submit">Verify</button>
-      </form>
-      <p><a href="/">Back to register</a></p>
+      <p><a href="/">Back to home</a></p>
     `)
   );
 });
@@ -80,35 +55,13 @@ app.post('/register', async (req, res) => {
   const email = String(req.body.email || '').trim();
   const password = String(req.body.password || '').trim();
   if (!email || !password) return res.status(400).send('Email and password are required.');
-  if (!mailTransport) return res.status(500).send('Email service not configured.');
-
-  const code = String(Math.floor(100000 + Math.random() * 900000));
   db.prepare(
     `INSERT INTO users (email, password, code, is_verified, created_at)
-     VALUES (?, ?, ?, 0, datetime('now'))
-     ON CONFLICT(email) DO UPDATE SET password=excluded.password, code=excluded.code, is_verified=0`
-  ).run(email, password, code);
+     VALUES (?, ?, '000000', 1, datetime('now'))
+     ON CONFLICT(email) DO UPDATE SET password=excluded.password, code='000000', is_verified=1`
+  ).run(email, password);
 
-  await mailTransport.sendMail({
-    from: process.env.GMAIL_USER,
-    to: email,
-    subject: 'Verification code',
-    text: `Your verification code is: ${code}`,
-  });
-
-  res.send('Verification code sent. Check your email.');
-});
-
-app.post('/verify', (req, res) => {
-  const email = String(req.body.email || '').trim();
-  const code = String(req.body.code || '').trim();
-  if (!email || !code) return res.status(400).send('Email and code are required.');
-
-  const row = db.prepare('SELECT code FROM users WHERE email=?').get(email);
-  if (!row || row.code !== code) return res.status(400).send('Invalid code.');
-
-  db.prepare('UPDATE users SET is_verified=1 WHERE email=?').run(email);
-  res.send('Account verified.');
+  res.send('Registered successfully.');
 });
 
 app.listen(PORT, () => {

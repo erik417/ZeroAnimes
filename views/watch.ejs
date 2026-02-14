@@ -1,7 +1,11 @@
 <%- include('partials/header', { q: '' }) %>
 <section class="watch">
   <div class="watch-head">
-    <a href="/" class="btn back-home" title="На главную" aria-label="На главную">←</a>
+    <a href="/" class="btn back-home" title="На главную" aria-label="На главную">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="none" stroke-width="2" d="M15 18l-6-6 6-6" />
+      </svg>
+    </a>
     <h1><a href="/anime/<%= anime.slug %>"><%= anime.title %></a> — Episode <%= episode.number %></h1>
   </div>
   <div class="player-container">

@@ -1,0 +1,32 @@
+<%- include('partials/header', { q: '' }) %>
+<section class="section">
+  <h3>Чаты</h3>
+  <div class="chat-list">
+    <% chats.forEach(c => { %>
+      <a class="chat-row" href="/chat/<%= c.username %>">
+        <% if (c.avatar) { %>
+          <img class="avatar" src="<%= c.avatar %>" alt="<%= c.username %>" />
+        <% } else { %>
+          <img class="avatar" src="/public/img/placeholder.webp" alt="<%= c.username %>" />
+        <% } %>
+        <div class="chat-info">
+          <strong class="user-name">
+            <%= c.username %>
+            <% if (c.is_verified) { %>
+              <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" />
+            <% } %>
+          </strong>
+          <% if (c.last_message) { %>
+            <span><%= c.last_message %></span>
+          <% } else { %>
+            <span>Нет сообщений</span>
+          <% } %>
+        </div>
+      </a>
+    <% }) %>
+    <% if (chats.length === 0) { %>
+      <p>Чатов пока нет.</p>
+    <% } %>
+  </div>
+</section>
+<%- include('partials/footer') %>

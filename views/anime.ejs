@@ -10,14 +10,30 @@
     <div class="actions anime-actions">
       <% if (user) { %>
         <% if (isFav) { %>
-          <button class="btn" id="favBtn" data-anime="<%= anime.id %>" data-state="on">★ В избранном</button>
+          <button class="btn" id="favBtn" data-anime="<%= anime.id %>" data-state="on">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke="none" d="M12 2l2.9 6 6.6.9-4.8 4.6 1.2 6.5-5.9-3.2-5.9 3.2 1.2-6.5L2.5 8.9 9.1 8z" />
+            </svg>
+            <span>В избранном</span>
+          </button>
         <% } else { %>
-          <button class="btn" id="favBtn" data-anime="<%= anime.id %>" data-state="off">☆ В избранное</button>
+          <button class="btn" id="favBtn" data-anime="<%= anime.id %>" data-state="off">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="none" stroke-width="2" d="M12 2l2.9 6 6.6.9-4.8 4.6 1.2 6.5-5.9-3.2-5.9 3.2 1.2-6.5L2.5 8.9 9.1 8z" />
+            </svg>
+            <span>В избранное</span>
+          </button>
         <% } %>
       <% } %>
       <div class="reaction">
         <% if (user) { %>
-          <button class="btn like-btn <%= userLike === 1 ? 'active' : '' %>" id="likeBtn" data-anime="<%= anime.id %>" data-state="<%= userLike === 1 ? 'on' : 'off' %>">👍 <span class="like-text">Лайк</span></button>
+          <button class="btn like-btn <%= userLike === 1 ? 'active' : '' %>" id="likeBtn" data-anime="<%= anime.id %>" data-state="<%= userLike === 1 ? 'on' : 'off' %>">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke="none" d="M2 10h4v10H2z" />
+              <path stroke="none" d="M6 20h11a2 2 0 0 0 2-1.6l2-7A2 2 0 0 0 19 9h-6l1-5-2-2-6 8v10z" />
+            </svg>
+            <span class="like-text">Лайк</span>
+          </button>
         <% } else { %>
           <a class="btn" href="/login">Войти чтобы лайкнуть</a>
         <% } %>
@@ -34,7 +50,12 @@
       <a class="episode-card" href="/watch/<%= e.id %>">
         <div class="episode-number">Серия <%= e.number %></div>
         <div class="episode-title"><%= e.title || ('Episode ' + e.number) %></div>
-        <div class="episode-action">Смотреть →</div>
+        <div class="episode-action">
+          Смотреть
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="none" stroke-width="2" d="M9 6l6 6-6 6" />
+          </svg>
+        </div>
       </a>
     <% }) %>
   </div>
@@ -54,9 +75,17 @@
   <div class="comments">
     <% comments.forEach(c => { %>
       <div class="comment">
-        <strong><%= c.username %></strong>
-        <span><%= new Date(c.created_at).toLocaleString() %></span>
-        <p><%= c.content %></p>
+        <img class="comment-avatar" src="<%= c.avatar_path || '/public/img/placeholder.webp' %>" alt="<%= c.username %>"/>
+        <div class="comment-content">
+          <strong class="user-name">
+            <a href="/user/<%= c.username %>"><%= c.username %></a>
+            <% if (c.is_verified) { %>
+              <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" />
+            <% } %>
+          </strong>
+          <span><%= new Date(c.created_at).toLocaleString() %></span>
+          <p><%= c.content %></p>
+        </div>
       </div>
     <% }) %>
   </div>
@@ -68,13 +97,18 @@ document.addEventListener('DOMContentLoaded', () => {
     favBtn.addEventListener('click', async () => {
       const id = favBtn.dataset.anime;
       const state = favBtn.dataset.state;
-      const labels = { on: '★ В избранном', off: '☆ В избранное' };
+      const labels = {
+        on:
+          '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path stroke="none" d="M12 2l2.9 6 6.6.9-4.8 4.6 1.2 6.5-5.9-3.2-5.9 3.2 1.2-6.5L2.5 8.9 9.1 8z" /></svg><span>В избранном</span>',
+        off:
+          '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke-width="2" d="M12 2l2.9 6 6.6.9-4.8 4.6 1.2 6.5-5.9-3.2-5.9 3.2 1.2-6.5L2.5 8.9 9.1 8z" /></svg><span>В избранное</span>',
+      };
       if (state === 'off') {
         const r = await fetch(`/anime/${id}/favorite`, {method:'POST'});
-        if (r.ok) { favBtn.dataset.state='on'; favBtn.textContent = labels.on; }
+        if (r.ok) { favBtn.dataset.state='on'; favBtn.innerHTML = labels.on; }
       } else {
         const r = await fetch(`/anime/${id}/favorite`, {method:'DELETE'});
-        if (r.ok) { favBtn.dataset.state='off'; favBtn.textContent = labels.off; }
+        if (r.ok) { favBtn.dataset.state='off'; favBtn.innerHTML = labels.off; }
       }
     });
   }

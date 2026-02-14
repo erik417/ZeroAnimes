@@ -11,36 +11,57 @@
   </script>
 </head>
 <body class="app">
-  <header class="topbar">
-    <div class="logo"><a href="/">Zero<span>Anime</span></a></div>
-    <form action="/" method="get" class="searchbar">
-      <input type="text" name="q" placeholder="Search anime..." value="<%= q || '' %>" />
-    </form>
-    <nav class="nav">
-      <a href="/genre/Action">Action</a>
-      <a href="/genre/Romance">Romance</a>
-      <a href="/genre/Fantasy">Fantasy</a>
-      <a href="/genre/Horror">Horror</a>
-      <a href="/genre/Comedy">Comedy</a>
-      <a href="/genre/Isekai">Isekai</a>
-      <% if (user && user.is_admin) { %>
-        <a href="/admin">Админ панель</a>
-        <a href="/admin/anime/new">Добавить аниме</a>
-        <a href="/admin/videos">Загрузить видео</a>
-      <% } %>
-    </nav>
-    <div class="user-actions">
-      <% if (path !== '/') { %>
-        <a href="/" class="btn back-home" title="На главную" aria-label="На главную">←</a>
-      <% } %>
-      <button id="themeToggle" class="btn" title="Theme">🌙</button>
-      <% if (user) { %>
-        <a href="/profile" class="btn">Hi, <%= user.username %></a>
-        <form action="/logout" method="post" style="display:inline"><button class="btn danger">Logout</button></form>
-      <% } else { %>
-        <a href="/login" class="btn">Login</a>
-        <a href="/register" class="btn primary">Register</a>
-      <% } %>
-    </div>
-  </header>
+  <% if (!['/login', '/register'].includes(path)) { %>
+    <header class="topbar">
+      <div class="logo"><a href="/">Zero<span>Anime</span></a></div>
+      <form action="/" method="get" class="searchbar">
+        <input type="text" name="q" placeholder="Search anime..." value="<%= q || '' %>" />
+      </form>
+      <nav class="nav">
+        <a href="/forum" class="nav-posts">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="none" stroke-width="2" d="M6 2h9l5 5v15H6zM15 2v5h5" />
+          </svg>
+          Посты
+        </a>
+        <% if (user) { %>
+          <a href="/chats">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke="none" d="M4 5h16v10H7l-3 3z" />
+            </svg>
+            Чат
+          </a>
+        <% } %>
+        <% if (user && user.is_admin) { %>
+          <a href="/admin">Админ панель</a>
+          <a href="/admin/anime/new">Добавить аниме</a>
+          <a href="/admin/videos">Загрузить видео</a>
+        <% } %>
+      </nav>
+      <div class="user-actions">
+        <% if (path !== '/') { %>
+          <a href="/" class="btn back-home" title="На главную" aria-label="На главную">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="none" stroke-width="2" d="M15 18l-6-6 6-6" />
+            </svg>
+          </a>
+        <% } %>
+        <button id="themeToggle" class="btn" title="Theme"></button>
+        <% if (user) { %>
+          <a href="/verify-request" class="btn">Заявка на галочку</a>
+          <a href="/user/<%= user.username %>" class="btn user-badge">
+            <img class="user-avatar" src="<%= user.avatar_path || '/public/img/placeholder.webp' %>" alt="<%= user.username %>" />
+            <span>Профиль</span>
+            <% if (user.is_verified) { %>
+              <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" />
+            <% } %>
+          </a>
+          <form action="/logout" method="post" style="display:inline"><button class="btn danger">Logout</button></form>
+        <% } else { %>
+          <a href="/login" class="btn">Login</a>
+          <a href="/register" class="btn primary">Register</a>
+        <% } %>
+      </div>
+    </header>
+  <% } %>
   <main class="container">

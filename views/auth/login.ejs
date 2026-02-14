@@ -1,5 +1,10 @@
 <%- include('../partials/header', { q: '' }) %>
 <section class="auth">
+  <a href="/" class="btn back-home auth-back" title="На главную" aria-label="На главную">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="none" stroke-width="2" d="M15 18l-6-6 6-6" />
+    </svg>
+  </a>
   <h2>Login</h2>
   <% if (error) { %><p class="error"><%= error %></p><% } %>
   <form action="/login" method="post" class="auth-form">

@@ -1,0 +1,33 @@
+<%- include('../partials/header', { q: '' }) %>
+<section class="section">
+  <h3>Forum Posts</h3>
+  <div class="table">
+    <div class="row head">
+      <span>Title</span>
+      <span>User</span>
+      <span>Date</span>
+      <span>Actions</span>
+    </div>
+    <% posts.forEach(p => { %>
+      <div class="row">
+        <span><%= p.title %></span>
+        <span>
+          <%= p.username %>
+          <% if (p.is_verified) { %>
+            <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" />
+          <% } %>
+        </span>
+        <span><%= new Date(p.created_at).toLocaleString() %></span>
+        <span>
+          <form action="/admin/forum/<%= p.id %>/delete" method="post">
+            <button class="btn danger">Delete</button>
+          </form>
+        </span>
+      </div>
+    <% }) %>
+    <% if (posts.length === 0) { %>
+      <p>No posts.</p>
+    <% } %>
+  </div>
+</section>
+<%- include('../partials/footer') %>

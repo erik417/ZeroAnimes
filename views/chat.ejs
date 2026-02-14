@@ -1,0 +1,37 @@
+<%- include('partials/header', { q: '' }) %>
+<section class="section">
+  <div class="chat-head">
+    <a class="btn chat-back" href="/chats"><< Все чаты</a>
+    <div class="chat-user">
+      <% if (other.avatar_path) { %>
+        <img class="avatar" src="<%= other.avatar_path %>" alt="<%= other.username %>" />
+      <% } else { %>
+        <img class="avatar" src="/public/img/placeholder.webp" alt="<%= other.username %>" />
+      <% } %>
+      <strong class="user-name">
+        <%= other.username %>
+        <% if (other.is_verified) { %>
+          <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" />
+        <% } %>
+      </strong>
+    </div>
+  </div>
+  <div class="chat-messages">
+    <% messages.forEach(m => { %>
+      <div class="chat-msg <%= m.sender_id === user.id ? 'me' : 'them' %>">
+        <div class="chat-bubble">
+          <p><%= m.content %></p>
+          <span><%= new Date(m.created_at).toLocaleString() %></span>
+        </div>
+      </div>
+    <% }) %>
+    <% if (messages.length === 0) { %>
+      <p>Сообщений пока нет.</p>
+    <% } %>
+  </div>
+  <form class="chat-form" action="/chat/<%= other.username %>" method="post">
+    <input name="content" placeholder="Напишите сообщение..." required />
+    <button class="btn primary">Отправить</button>
+  </form>
+</section>
+<%- include('partials/footer') %>

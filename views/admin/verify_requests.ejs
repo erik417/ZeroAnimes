@@ -1,0 +1,36 @@
+<%- include('../partials/header', { q: '' }) %>
+<section class="section">
+  <h3>Verification Requests</h3>
+  <div class="table">
+    <div class="row head">
+      <span>User</span>
+      <span>Email</span>
+      <span>Status</span>
+      <span>Actions</span>
+    </div>
+    <% requests.forEach(r => { %>
+      <div class="row">
+        <span>
+          <%= r.username %>
+          <% if (r.is_verified) { %>
+            <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" />
+          <% } %>
+        </span>
+        <span><%= r.email %></span>
+        <span><%= r.status %></span>
+        <span class="inline-actions">
+          <form action="/admin/verify-requests/<%= r.id %>/approve" method="post">
+            <button class="btn primary">Approve</button>
+          </form>
+          <form action="/admin/verify-requests/<%= r.id %>/reject" method="post">
+            <button class="btn danger">Reject</button>
+          </form>
+        </span>
+      </div>
+    <% }) %>
+    <% if (requests.length === 0) { %>
+      <p>No verification requests.</p>
+    <% } %>
+  </div>
+</section>
+<%- include('../partials/footer') %>

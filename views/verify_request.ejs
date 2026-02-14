@@ -1,0 +1,24 @@
+<%- include('partials/header', { q: '' }) %>
+<section class="section">
+  <h3>Verification Request</h3>
+  <div class="card">
+    <div class="card-body verify-card">
+      <% if (user && user.is_verified) { %>
+        <p>You are verified <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" /></p>
+      <% } else if (request && request.status === 'pending') { %>
+        <p>Your request is pending approval.</p>
+      <% } else if (request && request.status === 'rejected') { %>
+        <p>Your request was rejected.</p>
+        <form action="/verify-request" method="post">
+          <button class="btn primary">Apply again</button>
+        </form>
+      <% } else { %>
+        <p>Apply to get a verified checkmark.</p>
+        <form action="/verify-request" method="post">
+          <button class="btn primary">Apply for verification</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+</section>
+<%- include('partials/footer') %>

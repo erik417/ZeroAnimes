@@ -1,0 +1,209 @@
+<%- include('partials/header', { q: '' }) %>
+<section class="section">
+  <h3>Посты</h3>
+  <% if (error) { %><p class="error"><%= error %></p><% } %>
+  <% if (user && user.is_verified) { %>
+    <form class="form forum-form" action="/forum" method="post" enctype="multipart/form-data">
+      <label>Title</label>
+      <input name="title" required />
+      <label>Content</label>
+      <textarea name="content" rows="4" required></textarea>
+      <label>Video URL</label>
+      <input name="video_url" placeholder="https://..." />
+      <label>Upload video</label>
+      <input type="file" name="video" accept="video/*" />
+      <button class="btn primary">Post</button>
+    </form>
+  <% } else if (user) { %>
+    <p>Посты могут создавать только пользователи с галочкой.</p>
+  <% } else { %>
+    <p><a href="/login">Login</a> to create a post.</p>
+  <% } %>
+</section>
+
+<section class="section">
+  <h3>Последние посты</h3>
+  <div class="forum-list">
+    <% posts.forEach(p => { %>
+      <div class="card forum-post">
+        <div class="card-body">
+          <div class="forum-head">
+            <strong class="user-name">
+              <a href="/user/<%= p.username %>"><%= p.username %></a>
+              <% if (p.is_verified) { %>
+                <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" />
+              <% } %>
+            </strong>
+            <span><%= new Date(p.created_at).toLocaleString() %></span>
+          </div>
+          <h4><%= p.title %></h4>
+          <p><%= p.content %></p>
+          <% if (p.video_url) { %>
+            <video class="forum-video" src="<%= p.video_url %>" controls></video>
+          <% } %>
+          <div class="post-reactions">
+            <% if (user) { %>
+              <form action="/forum/<%= p.id %>/react" method="post">
+                <input type="hidden" name="value" value="<%= Number(p.my_reaction) === 1 ? 0 : 1 %>" />
+                <button class="reaction-btn <%= Number(p.my_reaction) === 1 ? 'active' : '' %>">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke="none" d="M2 10h4v10H2z" />
+                    <path stroke="none" d="M6 20h11a2 2 0 0 0 2-1.6l2-7A2 2 0 0 0 19 9h-6l1-5-2-2-6 8v10z" />
+                  </svg>
+                  <span><%= p.like_count %></span>
+                </button>
+              </form>
+              <form action="/forum/<%= p.id %>/react" method="post">
+                <input type="hidden" name="value" value="<%= Number(p.my_reaction) === -1 ? 0 : -1 %>" />
+                <button class="reaction-btn <%= Number(p.my_reaction) === -1 ? 'active' : '' %>">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke="none" d="M2 4h4v10H2z" />
+                    <path stroke="none" d="M6 4h11a2 2 0 0 1 2 1.6l2 7A2 2 0 0 1 19 15h-6l1 5-2 2-6-8V4z" />
+                  </svg>
+                  <span><%= p.dislike_count %></span>
+                </button>
+              </form>
+            <% } else { %>
+              <span class="reaction-count">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke="none" d="M2 10h4v10H2z" />
+                  <path stroke="none" d="M6 20h11a2 2 0 0 0 2-1.6l2-7A2 2 0 0 0 19 9h-6l1-5-2-2-6 8v10z" />
+                </svg>
+                <%= p.like_count %>
+              </span>
+              <span class="reaction-count">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke="none" d="M2 4h4v10H2z" />
+                  <path stroke="none" d="M6 4h11a2 2 0 0 1 2 1.6l2 7A2 2 0 0 1 19 15h-6l1 5-2 2-6-8V4z" />
+                </svg>
+                <%= p.dislike_count %>
+              </span>
+            <% } %>
+            <span class="reaction-count">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke="none" d="M4 5h16v10H7l-3 3z" />
+              </svg>
+              <%= p.comment_count %>
+            </span>
+          </div>
+          <div class="post-comments">
+            <% (commentsMap[p.id] || []).forEach(c => { const avatar = String(c.avatar_path || '').trim(); const avatarSrc = avatar ? (avatar.startsWith('/') ? avatar : '/' + avatar) : '/public/img/placeholder.webp'; %>
+              <div class="comment">
+                <img class="comment-avatar" src="<%= avatarSrc %>" alt="<%= c.username %>"/>
+                <div class="comment-content">
+                  <div class="comment-head">
+                    <strong class="user-name">
+                      <a href="/user/<%= c.username %>"><%= c.username %></a>
+                      <% if (c.is_verified) { %>
+                        <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" />
+                      <% } %>
+                    </strong>
+                    <% if (user) { %>
+                      <div class="comment-menu">
+                        <button class="comment-menu-btn" type="button" aria-label="Меню комментария">⋯</button>
+                        <div class="comment-menu-list">
+                          <button class="comment-menu-item reply-action" type="button" data-post="<%= p.id %>" data-comment="<%= c.id %>" data-user="<%= c.username %>">Ответить</button>
+                          <% if (user && user.id === c.user_id) { %>
+                            <button class="comment-menu-item edit-action" type="button">Изменить</button>
+                          <% } %>
+                          <% if (user && (user.id === c.user_id || user.id === p.user_id || user.is_admin)) { %>
+                            <form class="comment-menu-form" action="/forum/comments/<%= c.id %>/delete" method="post">
+                              <button class="comment-menu-item danger" type="submit">Удалить</button>
+                            </form>
+                          <% } %>
+                        </div>
+                      </div>
+                    <% } %>
+                  </div>
+                  <span><%= new Date(c.created_at).toLocaleString() %></span>
+                  <% if (c.reply_to_username) { %>
+                    <div class="reply-tag">Ответ @<%= c.reply_to_username %></div>
+                  <% } %>
+                  <p><%= c.content %></p>
+                  <% if (user && user.id === c.user_id) { %>
+                    <form class="comment-edit" action="/forum/comments/<%= c.id %>/edit" method="post">
+                      <textarea name="content" rows="2" required><%= c.content %></textarea>
+                      <button class="btn small">Сохранить</button>
+                    </form>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+            <% if ((commentsMap[p.id] || []).length === 0) { %>
+              <p>Комментариев пока нет.</p>
+            <% } %>
+            <% if (user) { %>
+              <form class="comment-form" action="/forum/<%= p.id %>/comment" method="post" data-post="<%= p.id %>">
+                <input type="hidden" name="reply_to" value="" />
+                <div class="reply-target"></div>
+                <textarea name="content" rows="3" placeholder="Напишите комментарий..." required></textarea>
+                <button class="btn primary">Отправить</button>
+              </form>
+            <% } else { %>
+              <p><a href="/login">Войти</a> чтобы комментировать.</p>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+    <% if (posts.length === 0) { %>
+      <p>No posts yet.</p>
+    <% } %>
+    <script>
+      const closeMenus = () => {
+        document.querySelectorAll('.comment-menu.open').forEach((m) => m.classList.remove('open'));
+      };
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.comment-menu')) closeMenus();
+      });
+      document.querySelectorAll('.comment-menu-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const menu = btn.closest('.comment-menu');
+          const isOpen = menu.classList.contains('open');
+          closeMenus();
+          if (!isOpen) menu.classList.add('open');
+        });
+      });
+      document.querySelectorAll('.reply-action').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const postId = btn.dataset.post;
+          const commentId = btn.dataset.comment;
+          const username = btn.dataset.user;
+          const form = document.querySelector(`form.comment-form[data-post="${postId}"]`);
+          if (!form) return;
+          const input = form.querySelector('input[name="reply_to"]');
+          const target = form.querySelector('.reply-target');
+          const textarea = form.querySelector('textarea');
+          input.value = commentId;
+          if (target) {
+            target.innerHTML = `Ответ @${username} <button type="button" class="reply-cancel">Отмена</button>`;
+            target.classList.add('active');
+            const cancel = target.querySelector('.reply-cancel');
+            cancel.addEventListener('click', () => {
+              input.value = '';
+              target.textContent = '';
+              target.classList.remove('active');
+            });
+          }
+          if (!textarea.value.startsWith(`@${username} `)) {
+            textarea.value = `@${username} ${textarea.value}`.trimStart();
+          }
+          textarea.focus();
+          closeMenus();
+        });
+      });
+      document.querySelectorAll('.edit-action').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const comment = btn.closest('.comment');
+          const form = comment ? comment.querySelector('.comment-edit') : null;
+          if (!form) return;
+          form.classList.add('active');
+          const textarea = form.querySelector('textarea');
+          if (textarea) textarea.focus();
+          closeMenus();
+        });
+      });
+    </script>
+  </div>
+<%- include('partials/footer') %>

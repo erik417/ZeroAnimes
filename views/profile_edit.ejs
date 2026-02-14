@@ -1,0 +1,28 @@
+<%- include('partials/header', { q: '' }) %>
+<section class="section">
+  <div class="card">
+    <div class="card-body">
+      <h3>Редактировать профиль</h3>
+      <% if (errors && errors.length) { %>
+        <div class="error-list">
+          <% errors.forEach(e => { %><p class="error"><%= e.msg %></p><% }) %>
+        </div>
+      <% } %>
+      <form action="/profile/edit" method="post" class="form" enctype="multipart/form-data">
+        <label>Имя аккаунта</label>
+        <input name="username" required value="<%= (values && values.username) || '' %>" />
+        <label>Описание</label>
+        <textarea name="bio" rows="4" maxlength="300"><%= (values && values.bio) || '' %></textarea>
+        <label>Аватар</label>
+        <input name="avatar" type="file" accept="image/*" />
+        <% if (avatar) { %>
+          <img class="avatar preview-avatar" src="<%= avatar %>" alt="avatar" />
+        <% } else { %>
+          <img class="avatar preview-avatar" src="/public/img/placeholder.webp" alt="avatar" />
+        <% } %>
+        <button class="btn primary">Сохранить</button>
+      </form>
+    </div>
+  </div>
+</section>
+<%- include('partials/footer') %>

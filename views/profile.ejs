@@ -31,5 +31,30 @@
     <% } %>
   </div>
 </section>
+<section class="section">
+  <h3>Verification</h3>
+  <div class="card">
+    <div class="card-body verify-card">
+      <div class="verify-row">
+        <span>Status:</span>
+        <% if (user && user.is_verified) { %>
+          <strong>Verified <img class="checkmark" src="/public/img/checkmark.png" alt="Verified" /></strong>
+        <% } else if (verifyRequest && verifyRequest.status === 'pending') { %>
+          <strong>Pending</strong>
+        <% } else if (verifyRequest && verifyRequest.status === 'rejected') { %>
+          <strong>Rejected</strong>
+        <% } else { %>
+          <strong>Not verified</strong>
+        <% } %>
+      </div>
+      <% if (user && !user.is_verified && (!verifyRequest || verifyRequest.status !== 'pending')) { %>
+        <form action="/verify-request" method="post">
+          <button class="btn primary">Apply for verification</button>
+        </form>
+      <% } else if (verifyRequest && verifyRequest.status === 'pending') { %>
+        <p>Your request is awaiting admin approval.</p>
+      <% } %>
+    </div>
+  </div>
+</section>
 <%- include('partials/footer') %>
-
