@@ -58,6 +58,14 @@ const mailTransport =
     : null;
 const mailFrom =
   process.env.SMTP_FROM || process.env.GMAIL_FROM || process.env.SMTP_USER || process.env.GMAIL_USER || '';
+if (mailTransport) {
+  mailTransport.verify().then(
+    () => console.log('Email transport ready'),
+    (err) => console.error('Email transport error:', err.message)
+  );
+} else {
+  console.warn('Email transport is not configured');
+}
 
 // Views & static
 app.set('view engine', 'ejs');
