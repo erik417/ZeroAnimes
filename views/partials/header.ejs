@@ -7,7 +7,7 @@
   <meta name="description" content="Watch anime online: popular, trending and new episodes." />
   <link rel="stylesheet" href="/public/css/styles.css" />
   <script>
-    (function(){try{var m=localStorage.getItem('theme');if(m==='dark'){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');localStorage.setItem('theme','light');}}catch(e){}})();
+    (function(){try{var m=localStorage.getItem('theme');if(m==='dark'){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');if(!m){localStorage.setItem('theme','light');}}}catch(e){}})();
   </script>
 </head>
 <body class="app">
@@ -30,6 +30,9 @@
       <% } %>
     </nav>
     <div class="user-actions">
+      <% if (path !== '/') { %>
+        <a href="/" class="btn back-home" title="На главную" aria-label="На главную">←</a>
+      <% } %>
       <button id="themeToggle" class="btn" title="Theme">🌙</button>
       <% if (user) { %>
         <a href="/profile" class="btn">Hi, <%= user.username %></a>

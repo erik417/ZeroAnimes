@@ -110,6 +110,7 @@ function genresStringToArray(s) {
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   res.locals.nowYear = new Date().getFullYear();
+  res.locals.path = req.path;
   next();
 });
 
