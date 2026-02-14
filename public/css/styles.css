@@ -227,3 +227,40 @@ html:not(.dark) .row.head{background:#f1f5f9}
   .row{grid-template-columns:1fr;gap:4px}
   .controls{flex-direction:column;align-items:flex-start}
 }
+@media (max-width:600px){
+  .container{width:92vw;padding:24px 0 18px}
+  .topbar{position:sticky;padding:8px 12px;gap:8px}
+  .topbar:hover{box-shadow:none}
+  .logo a{font-size:18px}
+  .searchbar input{padding:8px 12px;font-size:13px}
+  .nav{gap:6px;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap}
+  .nav a{font-size:12px;padding:6px 8px;flex:0 0 auto}
+  .user-actions{gap:6px;flex-wrap:wrap}
+  .btn{padding:8px 10px}
+  .btn.small{padding:6px 8px;font-size:11px}
+  .card-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .card-body{padding:8px}
+  .profile-head{flex-direction:column;align-items:flex-start}
+  .profile-actions{width:100%}
+  .profile-actions .btn{flex:1}
+  .profile-meta{gap:8px}
+  .forum-head{flex-direction:column;align-items:flex-start}
+  .post-reactions{flex-wrap:wrap;gap:6px}
+  .reaction-btn{padding:6px 8px;font-size:12px}
+  .comments{gap:8px}
+  .comment{padding:8px 10px;gap:8px}
+  .comment-avatar{width:32px;height:32px}
+  .comment-head{flex-direction:column;align-items:flex-start}
+  .comment-menu{align-self:flex-end}
+  .comment-menu-list{right:0;left:auto;min-width:140px}
+  .comment-form textarea{padding:9px 10px}
+  .comment-edit textarea{padding:8px}
+  .chat-head{flex-direction:column;align-items:flex-start}
+  .chat-row{gap:10px;padding:8px 10px}
+  .chat-messages{max-height:55vh}
+  .chat-bubble{max-width:85%}
+  .chat-form{flex-direction:column;align-items:stretch}
+  .chat-form input{width:100%}
+  .history-item{flex-direction:column;align-items:flex-start;gap:8px}
+  .episode-pill{min-width:180px}
+}
