@@ -12,7 +12,7 @@
 </head>
 <body class="app">
   <% if (!['/login', '/register'].includes(path)) { %>
-    <header class="topbar">
+    <header class="topbar <%= path === '/' ? 'is-home' : 'is-inner' %>">
       <div class="logo"><a href="/">Zero<span>Anime</span></a></div>
       <form action="/" method="get" class="searchbar">
         <input type="text" name="q" placeholder="Search anime..." value="<%= q || '' %>" />

@@ -263,4 +263,11 @@ html:not(.dark) .row.head{background:#f1f5f9}
   .chat-form input{width:100%}
   .history-item{flex-direction:column;align-items:flex-start;gap:8px}
   .episode-pill{min-width:180px}
+  .topbar.is-inner{justify-content:flex-start}
+  .topbar.is-inner .logo{display:none}
+  .topbar.is-inner .searchbar{display:none}
+  .topbar.is-inner .nav{display:none}
+  .topbar.is-inner .user-actions{width:auto}
+  .topbar.is-inner .user-actions > :not(.back-home){display:none}
+  .topbar.is-inner .back-home{margin-right:0}
 }
